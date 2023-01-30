@@ -4,7 +4,7 @@ RUN apk add --no-cache  alsa-lib-dev \
                         cargo \
                         git \
                         musl-dev\
-                        pkgconfig  
+                        pkgconfig
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout dev
@@ -39,7 +39,7 @@ WORKDIR /
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
-RUN npm install -g typescript@latest 
+RUN npm install -g typescript@latest
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
 RUN make
