@@ -1,77 +1,86 @@
-###### LIBRESPOT ######
-FROM docker.io/alpine:3.17 AS librespot
-RUN apk add --no-cache  alsa-lib-dev \
-                        cargo \
-                        git \
-                        musl-dev\
-                        pkgconfig
+FROM docker.io/alpine:3.17 as base
+RUN apk add --no-cache \
+    # LIBRESPOT
+    cargo \
+    git \
+    musl-dev\
+    pkgconfig \
+    # SNAPCAST
+    alpine-sdk \
+    alsa-lib-dev \
+    avahi-dev \
+    bash \
+    boost-dev \
+    boost1.80-dev \
+    expat-dev \
+    flac-dev \
+    git \
+    libvorbis-dev \
+    npm \
+    soxr-dev \
+    opus-dev \
+    # SHAIRPORT
+    alpine-sdk \
+    alsa-lib-dev \
+    autoconf \
+    automake \
+    avahi-dev \
+    dbus \
+    ffmpeg-dev \
+    git \
+    libtool \
+    libdaemon-dev \
+    libplist-dev \
+    libsodium-dev \
+    libgcrypt-dev \
+    libconfig-dev \
+    openssl-dev \
+    popt-dev \
+    soxr-dev \
+    xmltoman \
+    xxd
+# SNAPWEB
+RUN npm install -g typescript@latest
+
+###### LIBRESPOT START ######
+FROM base AS librespot
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout dev
+   && git checkout e68bbbf7312eca6dfd2c8b62c9b4b1f460983992
 WORKDIR /librespot
-RUN cargo build --release -j $(( $(nproc) -1 ))
+RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
 
-###### SNAPCAST BUNDLE ######
-FROM docker.io/alpine:3.17 AS snapcast
-RUN apk add --no-cache  alpine-sdk \
-                        alsa-lib-dev \
-                        avahi-dev \
-                        bash \
-                        boost-dev \
-                        boost1.80-dev \
-                        expat-dev \
-                        flac-dev \
-                        git \
-                        libvorbis-dev \
-                        npm \
-                        soxr-dev \
-                        opus-dev
+###### SNAPCAST BUNDLE START ######
+FROM base AS snapcast
 
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout develop \
+    && git checkout 97e84f31f6ba8f29198f1a4471180b10d8a74e98 \
     && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
-RUN  make HAS_EXPAT=1 -j $(( $(nproc) -1 )) server #https://github.com/badaix/snapcast/commit/fdcdf8e350e10374452a091fc8fa9e50641b9e86
+#https://github.com/badaix/snapcast/commit/fdcdf8e350e10374452a091fc8fa9e50641b9e86
+RUN  make HAS_EXPAT=1 -j $(( $(nproc) -1 )) server
 WORKDIR /
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
-RUN npm install -g typescript@latest
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
+RUN git checkout f19a12a3c27d0a4fcbb1058f365f36973c09d033
 RUN make
 WORKDIR /
 ### SNAPWEB END ###
 ###### SNAPCAST BUNDLE END ######
 
-###### SHAIRPORT BUNDLE ######
-FROM docker.io/alpine:3.17 AS shairport
-RUN apk add --no-cache  alpine-sdk \
-                        alsa-lib-dev \
-                        autoconf \
-                        automake \
-                        avahi-dev \
-                        dbus \
-                        ffmpeg-dev \
-                        git \
-                        libtool \
-                        libdaemon-dev \
-                        libplist-dev \
-                        libsodium-dev \
-                        libgcrypt-dev \
-                        libconfig-dev \
-                        openssl-dev \
-                        popt-dev \
-                        soxr-dev \
-                        xmltoman \
-                        xxd
+###### SHAIRPORT BUNDLE START ######
+FROM base AS shairport
+
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout development \
+RUN git checkout 845219c74cd0e35cd344da9f0a37c6e7d3e576f2 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -81,17 +90,27 @@ WORKDIR /
 ### ALAC ###
 RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
-RUN autoreconf -i \
+RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
+    && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 )) \
     && make install
 WORKDIR /
 ### ALAC END ###
 
+### METADATA-READER START ###
+RUN git clone https://github.com/mikebrady/shairport-sync-metadata-reader.git
+WORKDIR /shairport-sync-metadata-reader
+RUN autoreconf -i -f \
+    && ./configure \
+    && make
+WORKDIR /
+### METADATA-READER END ###
+
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout development
+    && git checkout a6c66db2761619456e80611d2ffc6054684f9caf
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -110,7 +129,7 @@ WORKDIR /
 ### SPS END ###
 ###### SHAIRPORT BUNDLE END ######
 
-###### MAIN ######
+###### MAIN START ######
 FROM docker.io/crazymax/alpine-s6:3.17-3.1.1.2
 RUN apk add --no-cache  alsa-lib \
                         avahi-libs \
@@ -143,6 +162,7 @@ COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf.sample /e
 COPY --from=shairport /usr/local/lib/libalac.* /usr/local/lib/
 COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-dbus.conf /etc/dbus-1/system.d/
 COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-mpris.conf /etc/dbus-1/system.d/
+COPY --from=shairport /shairport-sync-metadata-reader/shairport-sync-metadata-reader  /usr/local/bin/shairport-sync-metadata-reader
 
 # Copy local files
 COPY snapserver.conf /etc/snapserver.conf
