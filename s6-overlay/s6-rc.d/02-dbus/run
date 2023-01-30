@@ -1,0 +1,4 @@
+#!/command/with-contenv sh
+rm -rf /var/run/dbus/dbus.pid
+echo "Starting dbus"
+exec dbus-daemon --system --nofork

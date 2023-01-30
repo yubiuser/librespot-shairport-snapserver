@@ -1,0 +1,7 @@
+#!/command/with-contenv sh
+while [ ! -f /var/run/dbus/dbus.pid ]; do
+  echo "s6-rc: warning: dbus is not running, sleeping for 1 seconds before trying to start avahi"
+  sleep 1
+done
+echo "Starting avahi"
+exec avahi-daemon --no-chroot

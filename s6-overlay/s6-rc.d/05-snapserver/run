@@ -1,0 +1,7 @@
+#!/command/with-contenv sh
+while [ ! -f /var/run/avahi-daemon/pid ]; do
+  echo "s6-rc: warning: avahi is not running, sleeping for 1 seconds before trying to start snapserver"
+  sleep 1
+done
+echo "Starting snapserver"
+exec /usr/local/bin/snapserver
