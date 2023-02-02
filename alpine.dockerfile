@@ -57,7 +57,7 @@ FROM base AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 97e84f31f6ba8f29198f1a4471180b10d8a74e98 \
+    && git checkout c9bdceb1342a5776a21623992885b2f96de3f398 \
     && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 #https://github.com/badaix/snapcast/commit/fdcdf8e350e10374452a091fc8fa9e50641b9e86
