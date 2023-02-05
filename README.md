@@ -11,6 +11,8 @@ Idea adapted from [librespot-snapserver](https://github.com/djmaze/librespot-sna
 
  **Note:** Current last commit of the development branches for all repos are used to compile the lastest versions.
 
+ **Note** The coresponding Docker image for runinng `snapclient` can be found here: [https://github.com/yubiuser/snapclient-docker](https://github.com/yubiuser/snapclient-docker)
+
 ## Getting started
 
 Images for `amd64` can be found at [ghcr.io/yubiuser/librespot-shairport-snapserver](ghcr.io/yubiuser/librespot-shairport-snapserver).
