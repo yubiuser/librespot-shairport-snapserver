@@ -183,6 +183,4 @@ RUN addgroup shairport-sync \
 
 RUN mkdir /run/dbus
 
-EXPOSE 1704/tcp 1705/tcp
-
 ###### MAIN END ######

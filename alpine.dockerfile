@@ -174,6 +174,4 @@ RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
 RUN addgroup shairport-sync \
     && adduser -D shairport-sync -G shairport-sync
 
-EXPOSE 1704/tcp 1705/tcp
-
 ###### MAIN END ######
