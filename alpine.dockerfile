@@ -11,7 +11,6 @@ RUN apk add --no-cache \
     avahi-dev \
     bash \
     boost-dev \
-    boost1.80-dev \
     expat-dev \
     flac-dev \
     git \
@@ -60,8 +59,8 @@ RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && git checkout c9bdceb1342a5776a21623992885b2f96de3f398 \
     && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
-#https://github.com/badaix/snapcast/commit/fdcdf8e350e10374452a091fc8fa9e50641b9e86
-RUN  make HAS_EXPAT=1 -j $(( $(nproc) -1 )) server
+RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 ### SNAPSERVER END ###
 
@@ -153,12 +152,11 @@ RUN apk add --no-cache  alsa-lib \
                         htop
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
-COPY --from=snapcast /snapcast/server/snapserver /usr/local/bin/
+COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf /etc/
-COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf.sample /etc/
 COPY --from=shairport /usr/local/lib/libalac.* /usr/local/lib/
 COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-dbus.conf /etc/dbus-1/system.d/
 COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-mpris.conf /etc/dbus-1/system.d/
