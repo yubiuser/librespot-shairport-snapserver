@@ -45,7 +45,7 @@ RUN npm install -g typescript@latest
 FROM base AS librespot
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout e68bbbf7312eca6dfd2c8b62c9b4b1f460983992
+   && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
 WORKDIR /librespot
 RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
@@ -56,7 +56,7 @@ FROM base AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout c9bdceb1342a5776a21623992885b2f96de3f398 \
+    && git checkout 54a3d86200a52a36ab5cf1d699eee572539db52d \
     && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
@@ -109,7 +109,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a6c66db2761619456e80611d2ffc6054684f9caf
+    && git checkout aa1d578bc2b188dbcbb0d07f1b84dbf2dd683314
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
