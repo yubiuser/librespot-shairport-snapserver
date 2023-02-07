@@ -47,7 +47,7 @@ RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
 WORKDIR /librespot
-RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
+RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
