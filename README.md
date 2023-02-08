@@ -49,7 +49,7 @@ Start the container with
 ## Notes
 
 - Based on current Alpine version 3:17
-- Final image size is ~175 MB
+- Final image size is ~190 MB
 - All `make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
 - Compiling `snapserver`
   - A deprecated option needs to be removed on the `airplay-stream.cpp`

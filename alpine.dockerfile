@@ -131,27 +131,35 @@ WORKDIR /
 
 ###### MAIN START ######
 FROM docker.io/crazymax/alpine-s6:3.17-3.1.1.2
-RUN apk add --no-cache  alsa-lib \
-                        avahi-libs \
-                        avahi \
-                        avahi-tools \
-                        avahi-compat-libdns_sd \
-                        dbus \
-                        flac \
-                        ffmpeg-libs \
-                        glib \
-                        libgcc \
-                        libvorbis \
-                        libuuid \
-                        libgcrypt \
-                        libsodium \
-                        libplist \
-                        libconfig \
-                        musl \
-                        opus \
-                        soxr \
-                        popt \
-                        htop
+RUN apk add --no-cache \
+            # COMMON/s6
+            avahi \
+            dbus \
+            htop \
+            # LIBRESPOT
+            avahi-compat-libdns_sd \
+            libgcc \
+            # SNAPCAST
+            alsa-lib \
+            flac-libs \
+            libogg \
+            libvorbis \
+            libstdc++ \
+            libgcc \
+            opus \
+            soxr \
+            # SHAIRPORT
+            ffmpeg-libs \
+            glib \
+            libuuid \
+            libgcrypt \
+            libgcc \
+            libsodium \
+            libplist \
+            libconfig \
+            popt \
+            soxr
+
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
