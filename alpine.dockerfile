@@ -57,7 +57,8 @@ FROM base AS snapcast
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
     && git checkout 54a3d86200a52a36ab5cf1d699eee572539db52d \
-    && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
+    && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
+    && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose
@@ -134,6 +135,7 @@ RUN apk add --no-cache  alsa-lib \
                         avahi-libs \
                         avahi \
                         avahi-tools \
+                        avahi-compat-libdns_sd \
                         dbus \
                         flac \
                         ffmpeg-libs \
