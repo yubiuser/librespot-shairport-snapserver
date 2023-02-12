@@ -21,7 +21,7 @@ jobs:
           sed -i 's/(( \$(nproc) -1 ))/(nproc)/g' './alpine.dockerfile'
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2.4.0
+        uses: docker/setup-buildx-action@v2.4.1
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
