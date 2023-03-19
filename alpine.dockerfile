@@ -38,8 +38,6 @@ RUN apk add --no-cache \
     soxr-dev \
     xmltoman \
     xxd
-# SNAPWEB
-RUN npm install -g typescript@4.9.5
 
 ###### LIBRESPOT START ######
 FROM base AS librespot
@@ -68,8 +66,8 @@ WORKDIR /
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout f19a12a3c27d0a4fcbb1058f365f36973c09d033
-RUN make
+RUN git checkout 29f2850fda14bba774db9410d9fb61c7120fa4bb
+RUN npm ci && npm run build
 WORKDIR /
 ### SNAPWEB END ###
 ###### SNAPCAST BUNDLE END ######
@@ -163,7 +161,7 @@ RUN apk add --no-cache \
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf /etc/
