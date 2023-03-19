@@ -39,7 +39,7 @@ RUN apk add --no-cache \
     xmltoman \
     xxd
 # SNAPWEB
-RUN npm install -g typescript@latest
+RUN npm install -g typescript@4.9.5
 
 ###### LIBRESPOT START ######
 FROM base AS librespot
