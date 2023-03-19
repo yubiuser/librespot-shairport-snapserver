@@ -50,10 +50,9 @@ Start the container with
 
 - Based on current Alpine version 3:17
 - Final image size is ~190 MB
-- All `make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
+- All `(c)make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
 - Compiling `snapserver`
   - A deprecated option needs to be removed on the `airplay-stream.cpp`
-  - The compiler flag `HAS_EXPAT=1` needs to be set for Airplay metadata
 - `s6-overlay` is used as `init` system (same as the [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)). This is necessary, because *shairport-sync* needs a companion application called [NQPTP](https://github.com/mikebrady/nqptp) which needs to be started from `root` to run as deamon.
   - The `ENTRYPOINT ["/init"]` is set within the [docker-alpine-s6 base image](https://github.com/crazy-max/docker-alpine-s6) already
   - `s6-rc` with configured dependencies is used to start all services. `snapserver` should start as last
