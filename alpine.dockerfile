@@ -56,7 +56,7 @@ FROM base AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 54a3d86200a52a36ab5cf1d699eee572539db52d \
+    && git checkout 5968f96e11d4abf21e8b50cfe9ae306cdec29d57 \
     && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
@@ -80,7 +80,7 @@ FROM base AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 845219c74cd0e35cd344da9f0a37c6e7d3e576f2 \
+RUN git checkout 576273509779f31b9e8b4fa32087dea7105fa8c7 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -110,7 +110,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout aa1d578bc2b188dbcbb0d07f1b84dbf2dd683314
+    && git checkout a1c9387ca81bedebb986e237403db0cd57ae45dc
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
