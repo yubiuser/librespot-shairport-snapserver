@@ -66,7 +66,7 @@ WORKDIR /
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 29f2850fda14bba774db9410d9fb61c7120fa4bb
+RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
 RUN npm ci && npm run build
 WORKDIR /
 ### SNAPWEB END ###
