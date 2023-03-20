@@ -1,7 +1,6 @@
 FROM docker.io/alpine:3.17 as base
 RUN apk add --no-cache \
     # LIBRESPOT
-    cargo \
     git \
     musl-dev\
     pkgconfig \
@@ -41,6 +40,10 @@ RUN apk add --no-cache \
 
 ###### LIBRESPOT START ######
 FROM base AS librespot
+# Install cargo/rust from 'edge' as it is v1.68 which uses the new "sparse" protocol which speeds up the cargo index update massively
+RUN apk add --no-cache cargo --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
