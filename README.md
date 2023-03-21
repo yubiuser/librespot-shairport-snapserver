@@ -61,4 +61,4 @@ Start the container with
 - [Snapweb](https://github.com/badaix/snapweb) is inclued in the image and can be accessed on `http://<snapserver host>:1780`
 - `hop`  is included for debugging purposes
 - `shairport-sync-metadata-reader` is inclued for debuging purposes
-- I tried to provide multi-arch images as well, however, cross-compiling/building on Github with `QEMU` and `buildx` took hours and was canceled a few times automatically. I tried with a Debian based images as well, but no avail. The `debian.dockerfile` should provide a usable image with only minor necesary changes to the `s6` files. Debian images are ~307 MB.
+- I tried to provide multi-arch images as well, however, cross-compiling/building on Github with `QEMU` and `buildx` took hours and was canceled a few times automatically. I tried with a Debian based images as well, but no avail. The `debian.dockerfile` should provide a usable image with only minor necesary changes to the `s6` files. Debian images are ~334 MB.
