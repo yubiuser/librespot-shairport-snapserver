@@ -1,94 +1,104 @@
-###### LIBRESPOT START ######
-FROM docker.io/debian:bullseye-slim AS librespot
+FROM docker.io/debian:bullseye-slim AS base
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
-        build-essential \
-        ca-certificates \
-        curl \
-        git \
-        pkg-config \
-        libasound2-dev
+    # LIBRESPOT
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    pkg-config \
+    libasound2-dev \
+    # Snapcast
+    build-essential \
+    ca-certificates \
+    cmake \
+    git \
+    npm \
+    libboost-dev \
+    libasound2-dev \
+    libpulse-dev \
+    libvorbisidec-dev \
+    libvorbis-dev \
+    libopus-dev \
+    libflac-dev \
+    libsoxr-dev \
+    libavahi-client-dev \
+    libexpat1-dev \
+    # SHAIRPORT
+    build-essential \
+    ca-certificates \
+    git \
+    autoconf \
+    automake \
+    libglib2.0-dev \
+    libtool \
+    libpopt-dev \
+    libconfig-dev \
+    libasound2-dev \
+    libavahi-client-dev \
+    libssl-dev \
+    libsoxr-dev \
+    libplist-dev \
+    libsodium-dev \
+    libavutil-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    uuid-dev \
+    libgcrypt-dev \
+    xxd
+
+###### LIBRESPOT START ######
+FROM base AS librespot
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin/:${PATH}"
+# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout e68bbbf7312eca6dfd2c8b62c9b4b1f460983992
+   && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
 WORKDIR /librespot
 RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
 
-###### SNAPCAST START ######
-FROM docker.io/debian:bullseye-slim AS snapcast
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-        build-essential \
-        ca-certificates \
-        git \
-        npm \
-        libboost-dev \
-        libasound2-dev \
-        libpulse-dev \
-        libvorbisidec-dev \
-        libvorbis-dev \
-        libopus-dev \
-        libflac-dev \
-        libsoxr-dev \
-        libavahi-client-dev \
-        libexpat1-dev
+
+###### SNAPCAST BUNDLE START ######
+FROM base AS snapcast
 
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout c9bdceb1342a5776a21623992885b2f96de3f398 \
-    && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
+    && git checkout 5968f96e11d4abf21e8b50cfe9ae306cdec29d57 \
+    && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
+    && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
-RUN  make HAS_EXPAT=1 -j $(( $(nproc) -1 )) server #https://github.com/badaix/snapcast/commit/fdcdf8e350e10374452a091fc8fa9e50641b9e86
+RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
-RUN npm install -g typescript@latest
+# Upgrade node.js to 16.x
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+    && apt-get install --no-install-recommends -y nodejs
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout f19a12a3c27d0a4fcbb1058f365f36973c09d033
-RUN make
+RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
+ENV GENERATE_SOURCEMAP="false"
+RUN npm ci \
+    && npm install \
+    && npm run build
 WORKDIR /
 ### SNAPWEB END ###
-###### SNAPCAST END ######
+###### SNAPCAST BUNDLE END ######
 
-###### SHAIRPORT START ######
-FROM docker.io/debian:bullseye-slim AS shairport
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y \
-        build-essential \
-        ca-certificates \
-        git \
-        autoconf \
-        automake \
-        libglib2.0-dev \
-        libtool \
-        libpopt-dev \
-        libconfig-dev \
-        libasound2-dev \
-        libavahi-client-dev \
-        libssl-dev \
-        libsoxr-dev \
-        libplist-dev \
-        libsodium-dev \
-        libavutil-dev \
-        libavcodec-dev \
-        libavformat-dev \
-        uuid-dev \
-        libgcrypt-dev \
-        xxd
+###### SHAIRPORT BUNDLE START ######
+FROM base AS shairport
 
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 845219c74cd0e35cd344da9f0a37c6e7d3e576f2 \
+RUN git checkout 576273509779f31b9e8b4fa32087dea7105fa8c7 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -106,10 +116,19 @@ RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
 WORKDIR /
 ### ALAC END ###
 
+### METADATA-READER START ###
+RUN git clone https://github.com/mikebrady/shairport-sync-metadata-reader.git
+WORKDIR /shairport-sync-metadata-reader
+RUN autoreconf -i -f \
+    && ./configure \
+    && make
+WORKDIR /
+### METADATA-READER END ###
+
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a6c66db2761619456e80611d2ffc6054684f9caf
+    && git checkout a1c9387ca81bedebb986e237403db0cd57ae45dc
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -126,7 +145,7 @@ RUN autoreconf -i ../ \
     && DESTDIR=install make -j $(( $(nproc) -1 )) install
 WORKDIR /
 ### SPS END ###
-###### SHAIRPORT END ######
+###### SHAIRPORT BUNDLE END ######
 
 ###### MAIN START ######
 FROM docker.io/debian:bullseye-slim
@@ -151,6 +170,7 @@ RUN apt-get update \
         libplist3 \
         libconfig9 \
         libpopt0 \
+        libnss-mdns\
     && apt-get clean
 
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
@@ -161,8 +181,8 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
 
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
-COPY --from=snapcast /snapcast/server/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf /etc/
@@ -183,4 +203,5 @@ RUN addgroup shairport-sync \
 
 RUN mkdir /run/dbus
 
+ENTRYPOINT ["/init"]
 ###### MAIN END ######

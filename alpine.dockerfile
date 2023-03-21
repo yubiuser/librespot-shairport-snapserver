@@ -1,7 +1,6 @@
 FROM docker.io/alpine:3.17 as base
 RUN apk add --no-cache \
     # LIBRESPOT
-    cargo \
     git \
     musl-dev\
     pkgconfig \
@@ -11,7 +10,6 @@ RUN apk add --no-cache \
     avahi-dev \
     bash \
     boost-dev \
-    boost1.80-dev \
     expat-dev \
     flac-dev \
     git \
@@ -39,14 +37,16 @@ RUN apk add --no-cache \
     soxr-dev \
     xmltoman \
     xxd
-# SNAPWEB
-RUN npm install -g typescript@latest
 
 ###### LIBRESPOT START ######
 FROM base AS librespot
+# Install cargo/rust from 'edge' as it is v1.68 which uses the new "sparse" protocol which speeds up the cargo index update massively
+RUN apk add --no-cache cargo --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout e68bbbf7312eca6dfd2c8b62c9b4b1f460983992
+   && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
 WORKDIR /librespot
 RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
@@ -57,19 +57,20 @@ FROM base AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout c9bdceb1342a5776a21623992885b2f96de3f398 \
-    && sed -i "s/\-\-use-stderr //" "./server/streamreader/airplay_stream.cpp"
+    && git checkout 5968f96e11d4abf21e8b50cfe9ae306cdec29d57 \
+    && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
+    && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
-#https://github.com/badaix/snapcast/commit/fdcdf8e350e10374452a091fc8fa9e50641b9e86
-RUN  make HAS_EXPAT=1 -j $(( $(nproc) -1 )) server
+RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout f19a12a3c27d0a4fcbb1058f365f36973c09d033
-RUN make
+RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
+RUN npm ci && npm run build
 WORKDIR /
 ### SNAPWEB END ###
 ###### SNAPCAST BUNDLE END ######
@@ -80,7 +81,7 @@ FROM base AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 845219c74cd0e35cd344da9f0a37c6e7d3e576f2 \
+RUN git checkout 576273509779f31b9e8b4fa32087dea7105fa8c7 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -110,7 +111,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a6c66db2761619456e80611d2ffc6054684f9caf
+    && git checkout a1c9387ca81bedebb986e237403db0cd57ae45dc
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -131,34 +132,39 @@ WORKDIR /
 
 ###### MAIN START ######
 FROM docker.io/crazymax/alpine-s6:3.17-3.1.1.2
-RUN apk add --no-cache  alsa-lib \
-                        avahi-libs \
-                        avahi \
-                        avahi-tools \
-                        dbus \
-                        flac \
-                        ffmpeg-libs \
-                        glib \
-                        libgcc \
-                        libvorbis \
-                        libuuid \
-                        libgcrypt \
-                        libsodium \
-                        libplist \
-                        libconfig \
-                        musl \
-                        opus \
-                        soxr \
-                        popt \
-                        htop
+RUN apk add --no-cache \
+            # COMMON/s6
+            avahi \
+            dbus \
+            htop \
+            # SNAPCAST
+            alsa-lib \
+            flac-libs \
+            libogg \
+            libvorbis \
+            libstdc++ \
+            libgcc \
+            opus \
+            soxr \
+            # SHAIRPORT
+            ffmpeg-libs \
+            glib \
+            libuuid \
+            libgcrypt \
+            libgcc \
+            libsodium \
+            libplist \
+            libconfig \
+            popt \
+            soxr
+
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
-COPY --from=snapcast /snapcast/server/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf /etc/
-COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf.sample /etc/
 COPY --from=shairport /usr/local/lib/libalac.* /usr/local/lib/
 COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-dbus.conf /etc/dbus-1/system.d/
 COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-mpris.conf /etc/dbus-1/system.d/

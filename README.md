@@ -49,11 +49,10 @@ Start the container with
 ## Notes
 
 - Based on current Alpine version 3:17
-- Final image size is ~175 MB
-- All `make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
+- Final image size is ~190 MB
+- All `(c)make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
 - Compiling `snapserver`
   - A deprecated option needs to be removed on the `airplay-stream.cpp`
-  - The compiler flag `HAS_EXPAT=1` needs to be set for Airplay metadata
 - `s6-overlay` is used as `init` system (same as the [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)). This is necessary, because *shairport-sync* needs a companion application called [NQPTP](https://github.com/mikebrady/nqptp) which needs to be started from `root` to run as deamon.
   - The `ENTRYPOINT ["/init"]` is set within the [docker-alpine-s6 base image](https://github.com/crazy-max/docker-alpine-s6) already
   - `s6-rc` with configured dependencies is used to start all services. `snapserver` should start as last
@@ -62,4 +61,4 @@ Start the container with
 - [Snapweb](https://github.com/badaix/snapweb) is inclued in the image and can be accessed on `http://<snapserver host>:1780`
 - `hop`  is included for debugging purposes
 - `shairport-sync-metadata-reader` is inclued for debuging purposes
-- I tried to provide multi-arch images as well, however, cross-compiling/building on Github with `QEMU` and `buildx` took hours and was canceled a few times automatically. I tried with a Debian based images as well, but no avail. The `debian.dockerfile` should provide a usable image with only minor necesary changes to the `s6` files. Debian images are ~307 MB.
+- I tried to provide multi-arch images as well, however, cross-compiling/building on Github with `QEMU` and `buildx` took hours and was canceled a few times automatically. I tried with a Debian based images as well, but no avail. The `debian.dockerfile` should provide a usable image with only minor necesary changes to the `s6` files. Debian images are ~334 MB.
