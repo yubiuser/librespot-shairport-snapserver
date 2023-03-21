@@ -78,10 +78,16 @@ WORKDIR /
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
+# Upgrade node.js to 16.x
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+    && apt-get install --no-install-recommends -y nodejs
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
 RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
-RUN npm ci && npm run build
+ENV GENERATE_SOURCEMAP="false"
+RUN npm ci \
+    && npm install \
+    && npm run build
 WORKDIR /
 ### SNAPWEB END ###
 ###### SNAPCAST BUNDLE END ######
