@@ -1,6 +1,6 @@
 #!/command/with-contenv sh
-# For Debian use path 'run/dbus/pid'
-while [ ! -f /var/run/dbus/dbus.pid ]; do
+# For Alpine use path '/var/run/dbus/dbus.pid'
+while [ ! -f /run/dbus/pid ]; do
   echo "s6-rc: warning: dbus is not running, sleeping for 1 seconds before trying to start avahi"
   sleep 1
 done

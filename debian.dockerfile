@@ -7,6 +7,7 @@ RUN apt-get update \
     ca-certificates \
     curl \
     git \
+    libavahi-compat-libdnssd-dev \
     pkg-config \
     libasound2-dev \
     # Snapcast
@@ -56,9 +57,9 @@ ENV PATH="/root/.cargo/bin/:${PATH}"
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
+   && git checkout 7de8bdc0f3a4b726e921da2fb4c4a1726b98183c
 WORKDIR /librespot
-RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
+RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
 
 
@@ -83,10 +84,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
     && apt-get install --no-install-recommends -y nodejs
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
+RUN git checkout 0df63b98505aaad55a1cf588176249dd5036b467
 ENV GENERATE_SOURCEMAP="false"
-RUN npm ci \
-    && npm install \
+RUN npm install -g npm@latest \
+    && npm ci \
     && npm run build
 WORKDIR /
 ### SNAPWEB END ###
@@ -128,7 +129,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a1c9387ca81bedebb986e237403db0cd57ae45dc
+    && git checkout 1b53d9d3068fcc39ec8a286f01312e4fc54cb1e4
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -149,7 +150,7 @@ WORKDIR /
 
 ###### MAIN START ######
 FROM docker.io/debian:bullseye-slim
-ARG S6_OVERLAY_VERSION=3.1.3.0
+ARG S6_OVERLAY_VERSION=3.1.4.1
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
@@ -171,6 +172,7 @@ RUN apt-get update \
         libconfig9 \
         libpopt0 \
         libnss-mdns\
+        libavahi-compat-libdnssd1 \
     && apt-get clean
 
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
