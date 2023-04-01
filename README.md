@@ -50,8 +50,8 @@ Start the container with
 
 ## Notes
 
-- Based on current Debian Bullseye
-- Final image size is ~330 MB
+- Based on current Debian Bookworm
+- Final image size is ~365 MB
 - All `(c)make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
 - Compiling `snapserver`
   - A deprecated option needs to be removed on the `airplay-stream.cpp`
