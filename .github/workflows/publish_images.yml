@@ -18,7 +18,7 @@ jobs:
 
       - name: Revert CPU limit
         run: |
-          sed -i 's/(( \$(nproc) -1 ))/(nproc)/g' './alpine.dockerfile'
+          sed -i 's/(( \$(nproc) -1 ))/(nproc)/g' './alpine.dockerfile' './debian.dockerfile'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2.5.0

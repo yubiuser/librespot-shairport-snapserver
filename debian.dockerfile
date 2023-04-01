@@ -1,4 +1,4 @@
-FROM docker.io/debian:bullseye-slim AS base
+FROM docker.io/debian:bookworm-slim AS base
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
@@ -7,6 +7,7 @@ RUN apt-get update \
     ca-certificates \
     curl \
     git \
+    mold\
     libavahi-compat-libdnssd-dev \
     pkg-config \
     libasound2-dev \
@@ -51,10 +52,16 @@ RUN apt-get update \
 
 ###### LIBRESPOT START ######
 FROM base AS librespot
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+# Setup Rust
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --profile minimal -y
 ENV PATH="/root/.cargo/bin/:${PATH}"
+# Update cargo index fast
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
+# Disable incremental compilation
+ENV CARGO_INCREMENTAL=0
+# Use faster 'mold' linker
+ENV RUSTFLAGS="-C link-args=-fuse-ld=mold"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout 7de8bdc0f3a4b726e921da2fb4c4a1726b98183c
@@ -79,9 +86,6 @@ WORKDIR /
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
-# Upgrade node.js to 16.x
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
-    && apt-get install --no-install-recommends -y nodejs
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
 RUN git checkout 0df63b98505aaad55a1cf588176249dd5036b467
@@ -149,7 +153,7 @@ WORKDIR /
 ###### SHAIRPORT BUNDLE END ######
 
 ###### MAIN START ######
-FROM docker.io/debian:bullseye-slim
+FROM docker.io/debian:bookworm-slim
 ARG S6_OVERLAY_VERSION=3.1.4.1
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
@@ -160,13 +164,13 @@ RUN apt-get update \
         xz-utils \
         libvorbis0a \
         libvorbisenc2 \
-        libflac8 \
+        libflac12 \
         libopus0 \
         libsoxr0 \
         libasound2 \
         libavahi-client3 \
-        libswresample3 \
-        libavcodec-extra58 \
+        libswresample4 \
+        libavcodec-extra59 \
         libsodium23 \
         libplist3 \
         libconfig9 \
