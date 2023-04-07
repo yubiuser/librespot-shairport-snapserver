@@ -1,4 +1,6 @@
 #!/command/with-contenv sh
-rm -rf /var/run/dbus/dbus.pid
+# Remove existing pid file in case container restarts
+# For Alpine use path '/var/run/dbus/dbus.pid'
+rm -rf /run/dbus/dbus.pid
 echo "Starting dbus"
 exec dbus-daemon --system --nofork
