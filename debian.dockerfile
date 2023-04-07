@@ -103,7 +103,7 @@ FROM base AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 576273509779f31b9e8b4fa32087dea7105fa8c7 \
+RUN git checkout f125856089d71b6a37a284d3a0e6f0e6cc986058 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -133,7 +133,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 1b53d9d3068fcc39ec8a286f01312e4fc54cb1e4
+    && git checkout 32fddbfdc775069fb4f2898ff8b7f8d97d63ac53
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
