@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 7de8bdc0f3a4b726e921da2fb4c4a1726b98183c
+   && git checkout e4d476533203b734335a07bd0342fabb9ac34f42
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 ###### LIBRESPOT END ######
