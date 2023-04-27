@@ -61,7 +61,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 # Use faster 'mold' linker
-ENV RUSTFLAGS="-C link-args=-fuse-ld=mold"
+ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout e4d476533203b734335a07bd0342fabb9ac34f42
