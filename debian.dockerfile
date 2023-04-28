@@ -81,7 +81,8 @@ RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
-    && cmake --build build -j $(( $(nproc) -1 )) --verbose
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose \
+    && strip -s ./bin/snapserver
 WORKDIR /
 ### SNAPSERVER END ###
 
