@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout e4d476533203b734335a07bd0342fabb9ac34f42
+   && git checkout 31d18f7e30b1e680bc8c56c0f5144ccb6f9f6aab
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,7 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 5968f96e11d4abf21e8b50cfe9ae306cdec29d57 \
+    && git checkout 481f08199ca31c60c9a3475f1064e6b06a503d12 \
     && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
@@ -111,7 +111,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout f125856089d71b6a37a284d3a0e6f0e6cc986058 \
+RUN git checkout 5471c6c828e6dc19f24ff7106a042e4f5b3d604f \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -133,7 +133,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 32fddbfdc775069fb4f2898ff8b7f8d97d63ac53
+    && git checkout 6e7f40a7f1535a2b6da64c27fe8d3875c0294c67
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
