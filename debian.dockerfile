@@ -1,4 +1,4 @@
-FROM docker.io/debian:bookworm-slim AS base
+FROM docker.io/debian:bookworm-slim AS builder
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
@@ -51,7 +51,7 @@ RUN apt-get update \
     xxd
 
 ###### LIBRESPOT START ######
-FROM base AS librespot
+FROM builder AS librespot
 # Setup Rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --profile minimal -y
 ENV PATH="/root/.cargo/bin/:${PATH}"
@@ -67,11 +67,15 @@ RUN git clone https://github.com/librespot-org/librespot \
    && git checkout e4d476533203b734335a07bd0342fabb9ac34f42
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /librespot-libs \
+    && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 
 ###### SNAPCAST BUNDLE START ######
-FROM base AS snapcast
+FROM builder AS snapcast
 
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
@@ -84,6 +88,10 @@ RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
     && strip -s ./bin/snapserver
 WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /snapserver-libs \
+    && ldd /snapcast/bin/snapserver | cut -d" " -f3 | xargs cp --dereference --target-directory=/snapserver-libs/
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
@@ -99,7 +107,7 @@ WORKDIR /
 ###### SNAPCAST BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM base AS shairport
+FROM builder AS shairport
 
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
@@ -120,16 +128,8 @@ RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
     && make -j $(( $(nproc) -1 )) \
     && make install
 WORKDIR /
+RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### ALAC END ###
-
-### METADATA-READER START ###
-RUN git clone https://github.com/mikebrady/shairport-sync-metadata-reader.git
-WORKDIR /shairport-sync-metadata-reader
-RUN autoreconf -i -f \
-    && ./configure \
-    && make
-WORKDIR /
-### METADATA-READER END ###
 
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
@@ -143,70 +143,53 @@ RUN autoreconf -i ../ \
                     --with-ssl=openssl \
                     --with-airplay-2 \
                     --with-stdout \
-                    --with-pipe \
                     --with-metadata \
                     --with-apple-alac \
-                    --with-dbus-interface \
-                    --with-mpris-interface \
     && DESTDIR=install make -j $(( $(nproc) -1 )) install
+
 WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /shairport-libs \
+    && ldd /shairport/build/shairport-sync | cut -d" " -f3 | xargs cp --dereference --target-directory=/shairport-libs/
 ### SPS END ###
 ###### SHAIRPORT BUNDLE END ######
 
 ###### MAIN START ######
 FROM docker.io/debian:bookworm-slim
 ARG S6_OVERLAY_VERSION=3.1.4.1
-ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         ca-certificates \
         avahi-daemon \
         dbus\
         xz-utils \
-        libvorbis0a \
-        libvorbisenc2 \
-        libflac12 \
-        libopus0 \
-        libsoxr0 \
-        libasound2 \
-        libavahi-client3 \
-        libswresample4 \
-        libavcodec-extra59 \
-        libsodium23 \
-        libplist3 \
-        libconfig9 \
-        libpopt0 \
-        libnss-mdns\
-        libavahi-compat-libdnssd1 \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
-RUN tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz
+# Install s6
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+    && rm -rf /tmp/*
+
 
 
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
+#COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
-COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf /etc/
-COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf.sample /etc/
-COPY --from=shairport /usr/local/lib/libalac.* /usr/lib/
-COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-dbus.conf /etc/dbus-1/system.d/
-COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-mpris.conf /etc/dbus-1/system.d/
+
+COPY --from=librespot /librespot-libs/ /lib/x86_64-linux-gnu/
+COPY --from=snapcast /snapserver-libs/ /lib/x86_64-linux-gnu/
+COPY --from=shairport /shairport-libs/ /lib/x86_64-linux-gnu/
 
 # Copy local files
-COPY snapserver.conf /etc/snapserver.conf
 COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
 RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
-
-# Create non-root user for running the container -- running as the user 'shairport-sync' also allows
-# Shairport Sync to provide the D-Bus and MPRIS interfaces within the container
-RUN addgroup shairport-sync \
-    && adduser --disabled-password --no-create-home shairport-sync --ingroup shairport-sync
 
 RUN mkdir /run/dbus
 
