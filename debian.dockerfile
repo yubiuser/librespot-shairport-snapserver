@@ -73,7 +73,6 @@ RUN mkdir /librespot-libs \
     && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
-
 ###### SNAPCAST BUNDLE START ######
 FROM builder AS snapcast
 
@@ -155,17 +154,20 @@ RUN mkdir /shairport-libs \
 ### SPS END ###
 ###### SHAIRPORT BUNDLE END ######
 
-###### MAIN START ######
-FROM docker.io/debian:bookworm-slim
+###### BASE START ######
+FROM docker.io/debian:bookworm-slim as base
 ARG S6_OVERLAY_VERSION=3.1.4.1
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
-        ca-certificates \
-        avahi-daemon \
-        dbus\
-        xz-utils \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+        fdupes \
+        xz-utils
+
+# Copy all necessary libaries into one directory to avoid carring over duplicates
+# Removes all libaries that are installed already in the base image
+COPY --from=librespot /librespot-libs/ /tmp-libs/
+COPY --from=snapcast /snapserver-libs/ /tmp-libs/
+COPY --from=shairport /shairport-libs/ /tmp-libs/
+RUN fdupes -d -N /tmp-libs/ /lib/x86_64-linux-gnu/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
@@ -174,18 +176,31 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
     && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
     && rm -rf /tmp/*
 
+###### BASE END ######
 
+###### MAIN START ######
+FROM docker.io/debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+        ca-certificates \
+        avahi-daemon \
+        dbus\
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy extracted s6-overlay and libs from base
+COPY --from=base /command /command/
+COPY --from=base /package/ /package/
+COPY --from=base /etc/s6-overlay/ /etc/s6-overlay/
+COPY --from=base init /init
+COPY --from=base /tmp-libs/ /lib/x86_64-linux-gnu/
 
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-#COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
-
-COPY --from=librespot /librespot-libs/ /lib/x86_64-linux-gnu/
-COPY --from=snapcast /snapserver-libs/ /lib/x86_64-linux-gnu/
-COPY --from=shairport /shairport-libs/ /lib/x86_64-linux-gnu/
 
 # Copy local files
 COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
