@@ -75,19 +75,22 @@ RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
     && strip -s ./bin/snapserver
 WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /snapserver-libs \
+    && ldd /snapcast/bin/snapserver | cut -d" " -f3 | xargs cp --dereference --target-directory=/snapserver-libs/
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
-RUN npm ci && npm run build
+RUN git checkout 0df63b98505aaad55a1cf588176249dd5036b467
+ENV GENERATE_SOURCEMAP="false"
+RUN npm install -g npm@latest \
+    && npm ci \
+    && npm run build
 WORKDIR /
 ### SNAPWEB END ###
-
-# Gather all shared libaries necessary to run the executable
-RUN mkdir /snapserver-libs \
-    && ldd /snapcast/bin/snapserver | cut -d" " -f3 | xargs cp --dereference --target-directory=/snapserver-libs/
 ###### SNAPCAST BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
@@ -96,7 +99,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 576273509779f31b9e8b4fa32087dea7105fa8c7 \
+RUN git checkout f125856089d71b6a37a284d3a0e6f0e6cc986058 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -117,7 +120,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a1c9387ca81bedebb986e237403db0cd57ae45dc
+    && git checkout 32fddbfdc775069fb4f2898ff8b7f8d97d63ac53
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -141,10 +144,14 @@ RUN mkdir /shairport-libs \
 ###### BASE START ######
 FROM docker.io/alpine:3.17 as base
 ARG S6_OVERLAY_VERSION=3.1.4.1
+RUN apk add --no-cache \
+    fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
-COPY --from=librespot /librespot-libs/ /usr/lib/
-COPY --from=snapcast /snapserver-libs/ /usr/lib/
-COPY --from=shairport /shairport-libs/ /usr/lib/
+# Removes all libaries that are installed already in the base image
+COPY --from=librespot /librespot-libs/ /tmp-libs/
+COPY --from=snapcast /snapserver-libs/ /tmp-libs/
+COPY --from=shairport /shairport-libs/ /tmp-libs/
+RUN fdupes -d -N /tmp-libs/ /lib/x86_64-linux-gnu/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
@@ -167,9 +174,9 @@ COPY --from=base /command /command/
 COPY --from=base /package/ /package/
 COPY --from=base /etc/s6-overlay/ /etc/s6-overlay/
 COPY --from=base init /init
-COPY --from=base /usr/lib/ /usr/lib/
+COPY --from=base /tmp-libs/ /usr/lib/
 
-# Copy all necessary files from the builders and base
+# Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
