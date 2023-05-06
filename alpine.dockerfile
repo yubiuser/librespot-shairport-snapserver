@@ -1,4 +1,4 @@
-FROM docker.io/alpine:3.17 as base
+FROM docker.io/alpine:3.17 as builder
 RUN apk add --no-cache \
     # LIBRESPOT
     git \
@@ -40,7 +40,7 @@ RUN apk add --no-cache \
     xxd
 
 ###### LIBRESPOT START ######
-FROM base AS librespot
+FROM builder AS librespot
 # Use faster 'mold' linker from 'edge'
 RUN apk add --no-cache llvm16-libs --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
@@ -62,7 +62,7 @@ RUN mkdir /librespot-libs \
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
-FROM base AS snapcast
+FROM builder AS snapcast
 
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
@@ -91,7 +91,7 @@ RUN mkdir /snapserver-libs \
 ###### SNAPCAST BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM base AS shairport
+FROM builder AS shairport
 
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
@@ -138,28 +138,47 @@ RUN mkdir /shairport-libs \
 ### SPS END ###
 ###### SHAIRPORT BUNDLE END ######
 
+###### BASE START ######
+FROM docker.io/alpine:3.17 as base
+ARG S6_OVERLAY_VERSION=3.1.4.1
+# Copy all necessary libaries into one directory to avoid carring over duplicates
+COPY --from=librespot /librespot-libs/ /usr/lib/
+COPY --from=snapcast /snapserver-libs/ /usr/lib/
+COPY --from=shairport /shairport-libs/ /usr/lib/
+
+# Install s6
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+    && rm -rf /tmp/*
+
+###### BASE END ######
+
 ###### MAIN START ######
-FROM docker.io/crazymax/alpine-s6:3.17-3.1.1.2
+FROM docker.io/alpine:3.17
 RUN apk add --no-cache \
             avahi \
             dbus \
     && rm -rf /lib/apk/db/*
 
-# Copy all necessary files from the builders
+# Copy extracted s6-overlay and libs from base
+COPY --from=base /command /command/
+COPY --from=base /package/ /package/
+COPY --from=base /etc/s6-overlay/ /etc/s6-overlay/
+COPY --from=base init /init
+COPY --from=base /usr/lib/ /usr/lib/
+
+# Copy all necessary files from the builders and base
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
-COPY --from=shairport /usr/local/lib/libalac.* /usr/local/lib/
-
-COPY --from=librespot /librespot-libs/ /usr/lib/
-COPY --from=snapcast /snapserver-libs/ /usr/lib/
-COPY --from=shairport /shairport-libs/ /usr/lib/
 
 # Copy local files
-COPY snapserver.conf /etc/snapserver.conf
 COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
 RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
 
+ENTRYPOINT ["/init"]
 ###### MAIN END ######
