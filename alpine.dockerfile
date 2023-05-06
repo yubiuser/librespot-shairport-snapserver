@@ -143,7 +143,7 @@ RUN mkdir /shairport-libs \
 
 ###### BASE START ######
 FROM docker.io/alpine:3.17 as base
-ARG S6_OVERLAY_VERSION=3.1.4.1
+ARG S6_OVERLAY_VERSION=3.1.5.0
 RUN apk add --no-cache \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates

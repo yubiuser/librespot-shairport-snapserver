@@ -156,7 +156,7 @@ RUN mkdir /shairport-libs \
 
 ###### BASE START ######
 FROM docker.io/debian:bookworm-slim as base
-ARG S6_OVERLAY_VERSION=3.1.4.1
+ARG S6_OVERLAY_VERSION=3.1.5.0
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         fdupes \
