@@ -1,11 +1,14 @@
-FROM docker.io/alpine:3.17 as base
+FROM docker.io/alpine:3.18 as builder
 RUN apk add --no-cache \
     # LIBRESPOT
+    cargo \
     git \
+    llvm16-libs \
+    mold \
     musl-dev\
     pkgconfig \
     # SNAPCAST
-    alpine-sdk \
+    cmake \
     alsa-lib-dev \
     avahi-dev \
     bash \
@@ -39,49 +42,64 @@ RUN apk add --no-cache \
     xxd
 
 ###### LIBRESPOT START ######
-FROM base AS librespot
-# Install cargo/rust from 'edge' as it is v1.68 which uses the new "sparse" protocol which speeds up the cargo index update massively
-RUN apk add --no-cache cargo --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+FROM builder AS librespot
+# Use faster 'mold' linker and strip debug symbols
+ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
+# Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
+# Disable incremental compilation
+ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout a211ff94c6c9d11b78964aad91b2a7db1d17d04f
+   && git checkout 31d18f7e30b1e680bc8c56c0f5144ccb6f9f6aab
 WORKDIR /librespot
-RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
+RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /librespot-libs \
+    && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
-FROM base AS snapcast
+FROM builder AS snapcast
 
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 5968f96e11d4abf21e8b50cfe9ae306cdec29d57 \
+    && git checkout 481f08199ca31c60c9a3475f1064e6b06a503d12 \
     && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
-    && cmake --build build -j $(( $(nproc) -1 )) --verbose
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose \
+    && strip -s ./bin/snapserver
 WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /snapserver-libs \
+    && ldd /snapcast/bin/snapserver | cut -d" " -f3 | xargs cp --dereference --target-directory=/snapserver-libs/
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout a51c67e5fbef9f7f2e5c2f5002db93fcaaac703d
-RUN npm ci && npm run build
+RUN git checkout 0df63b98505aaad55a1cf588176249dd5036b467
+ENV GENERATE_SOURCEMAP="false"
+RUN npm install -g npm@latest \
+    && npm ci \
+    && npm run build
 WORKDIR /
 ### SNAPWEB END ###
 ###### SNAPCAST BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM base AS shairport
+FROM builder AS shairport
 
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 576273509779f31b9e8b4fa32087dea7105fa8c7 \
+RUN git checkout 5471c6c828e6dc19f24ff7106a042e4f5b3d604f \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -99,19 +117,10 @@ RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
 WORKDIR /
 ### ALAC END ###
 
-### METADATA-READER START ###
-RUN git clone https://github.com/mikebrady/shairport-sync-metadata-reader.git
-WORKDIR /shairport-sync-metadata-reader
-RUN autoreconf -i -f \
-    && ./configure \
-    && make
-WORKDIR /
-### METADATA-READER END ###
-
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a1c9387ca81bedebb986e237403db0cd57ae45dc
+    && git checkout 6e7f40a7f1535a2b6da64c27fe8d3875c0294c67
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -120,43 +129,52 @@ RUN autoreconf -i ../ \
                     --with-ssl=openssl \
                     --with-airplay-2 \
                     --with-stdout \
-                    --with-pipe \
                     --with-metadata \
                     --with-apple-alac \
-                    --with-dbus-interface \
-                    --with-mpris-interface \
     && DESTDIR=install make -j $(( $(nproc) -1 )) install
+
 WORKDIR /
+
+# Gather all shared libaries necessary to run the executable
+RUN mkdir /shairport-libs \
+    && ldd /shairport/build/shairport-sync | cut -d" " -f3 | xargs cp --dereference --target-directory=/shairport-libs/
 ### SPS END ###
 ###### SHAIRPORT BUNDLE END ######
 
-###### MAIN START ######
-FROM docker.io/crazymax/alpine-s6:3.17-3.1.1.2
+###### BASE START ######
+FROM docker.io/alpine:3.18 as base
+ARG S6_OVERLAY_VERSION=3.1.5.0
 RUN apk add --no-cache \
-            # COMMON/s6
+    fdupes
+# Copy all necessary libaries into one directory to avoid carring over duplicates
+# Removes all libaries that are installed already in the base image
+COPY --from=librespot /librespot-libs/ /tmp-libs/
+COPY --from=snapcast /snapserver-libs/ /tmp-libs/
+COPY --from=shairport /shairport-libs/ /tmp-libs/
+RUN fdupes -d -N /tmp-libs/ /usr/lib/
+
+# Install s6
+ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+    && rm -rf /tmp/*
+
+###### BASE END ######
+
+###### MAIN START ######
+FROM docker.io/alpine:3.18
+RUN apk add --no-cache \
             avahi \
             dbus \
-            htop \
-            # SNAPCAST
-            alsa-lib \
-            flac-libs \
-            libogg \
-            libvorbis \
-            libstdc++ \
-            libgcc \
-            opus \
-            soxr \
-            # SHAIRPORT
-            ffmpeg-libs \
-            glib \
-            libuuid \
-            libgcrypt \
-            libgcc \
-            libsodium \
-            libplist \
-            libconfig \
-            popt \
-            soxr
+    && rm -rf /lib/apk/db/*
+
+# Copy extracted s6-overlay and libs from base
+COPY --from=base /command /command/
+COPY --from=base /package/ /package/
+COPY --from=base /etc/s6-overlay/ /etc/s6-overlay/
+COPY --from=base init /init
+COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
@@ -164,20 +182,12 @@ COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
-COPY --from=shairport /shairport/build/install/etc/shairport-sync.conf /etc/
-COPY --from=shairport /usr/local/lib/libalac.* /usr/local/lib/
-COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-dbus.conf /etc/dbus-1/system.d/
-COPY --from=shairport /shairport/build/install/etc/dbus-1/system.d/shairport-sync-mpris.conf /etc/dbus-1/system.d/
-COPY --from=shairport /shairport-sync-metadata-reader/shairport-sync-metadata-reader  /usr/local/bin/shairport-sync-metadata-reader
 
 # Copy local files
-COPY snapserver.conf /etc/snapserver.conf
 COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
 RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
 
-# Create non-root user for running the container -- running as the user 'shairport-sync' also allows
-# Shairport Sync to provide the D-Bus and MPRIS interfaces within the container
-RUN addgroup shairport-sync \
-    && adduser -D shairport-sync -G shairport-sync
+RUN mkdir -p /var/run/dbus/
 
+ENTRYPOINT ["/init"]
 ###### MAIN END ######
