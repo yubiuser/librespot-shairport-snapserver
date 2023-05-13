@@ -159,11 +159,14 @@ FROM docker.io/debian:bookworm-slim as base
 ARG S6_OVERLAY_VERSION=3.1.5.0
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
+        ca-certificates \
+        avahi-daemon \
+        dbus\
         fdupes \
         xz-utils
 
 # Copy all necessary libaries into one directory to avoid carring over duplicates
-# Removes all libaries that are installed already in the base image
+# Removes all libaries that will be installed in the final image
 COPY --from=librespot /librespot-libs/ /tmp-libs/
 COPY --from=snapcast /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/

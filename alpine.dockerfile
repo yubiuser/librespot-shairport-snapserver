@@ -145,9 +145,11 @@ RUN mkdir /shairport-libs \
 FROM docker.io/alpine:3.18 as base
 ARG S6_OVERLAY_VERSION=3.1.5.0
 RUN apk add --no-cache \
+    avahi \
+    dbus \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
-# Removes all libaries that are installed already in the base image
+# Removes all libaries that will be installed in the final image
 COPY --from=librespot /librespot-libs/ /tmp-libs/
 COPY --from=snapcast /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
