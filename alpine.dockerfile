@@ -166,6 +166,10 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 
 ###### MAIN START ######
 FROM docker.io/alpine:3.18
+
+ENV S6_CMD_WAIT_FOR_SERVICES=1
+ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+
 RUN apk add --no-cache \
             avahi \
             dbus \

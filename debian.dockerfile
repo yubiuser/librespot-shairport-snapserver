@@ -183,6 +183,10 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 
 ###### MAIN START ######
 FROM docker.io/debian:bookworm-slim
+
+ENV S6_CMD_WAIT_FOR_SERVICES=1
+ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         ca-certificates \
