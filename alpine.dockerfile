@@ -1,12 +1,14 @@
-FROM docker.io/alpine:3.17 as builder
+FROM docker.io/alpine:3.18 as builder
 RUN apk add --no-cache \
     # LIBRESPOT
+    cargo \
     git \
+    llvm16-libs \
     mold \
     musl-dev\
     pkgconfig \
     # SNAPCAST
-    alpine-sdk \
+    cmake \
     alsa-lib-dev \
     avahi-dev \
     bash \
@@ -41,11 +43,9 @@ RUN apk add --no-cache \
 
 ###### LIBRESPOT START ######
 FROM builder AS librespot
-# Use faster 'mold' linker from 'edge'
-RUN apk add --no-cache llvm16-libs --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main
+# Use faster 'mold' linker and strip debug symbols
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
-# Install cargo/rust from 'edge' as it is >= v1.68 which uses the new "sparse" protocol which speeds up the cargo index update massively
-RUN apk add --no-cache cargo --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+# Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
@@ -142,7 +142,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.17 as base
+FROM docker.io/alpine:3.18 as base
 ARG S6_OVERLAY_VERSION=3.1.5.0
 RUN apk add --no-cache \
     fdupes
@@ -163,7 +163,7 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.17
+FROM docker.io/alpine:3.18
 RUN apk add --no-cache \
             avahi \
             dbus \
@@ -186,6 +186,8 @@ COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 # Copy local files
 COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
 RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
+
+RUN mkdir -p /var/run/dbus/
 
 ENTRYPOINT ["/init"]
 ###### MAIN END ######
