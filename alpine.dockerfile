@@ -151,7 +151,7 @@ RUN apk add --no-cache \
 COPY --from=librespot /librespot-libs/ /tmp-libs/
 COPY --from=snapcast /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
-RUN fdupes -d -N /tmp-libs/ /lib/x86_64-linux-gnu/
+RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
