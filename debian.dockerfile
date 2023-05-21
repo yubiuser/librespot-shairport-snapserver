@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 31d18f7e30b1e680bc8c56c0f5144ccb6f9f6aab
+   && git checkout c964102a349589d644baef5f43a566d6d1e151f1
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -111,7 +111,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 5471c6c828e6dc19f24ff7106a042e4f5b3d604f \
+RUN git checkout 2afefb9d5e2d8ee09d2d9c77b831aedfb0a42ab1 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -133,7 +133,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 6e7f40a7f1535a2b6da64c27fe8d3875c0294c67
+    && git checkout a0e9c0ac34fd350d9179d6fc39c47e64bb07e875
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
