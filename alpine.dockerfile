@@ -52,7 +52,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 8e43c3f097131f9dbcb117006160945be29d4b29
+   && git checkout f037e46aee631837a0553ccfdbc7866752fd0f5d
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -119,7 +119,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout d242aab65a8b40134cb372f837ea77a0295953b8
+    && git checkout 8821ec286171a67ae61158551f4884c7c926e330
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
