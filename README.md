@@ -29,7 +29,7 @@ or with `docker-compose.yml`
 ```yml
 services:
   snapcast:
-    image: ghcr.io/yubiuser/yubiuser/librespot-shairport-snapserver
+    image: ghcr.io/yubiuser/librespot-shairport-snapserver
     container_name: snapcast
     restart: unless-stopped
     network_mode: host
