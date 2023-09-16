@@ -83,7 +83,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout ecfb8fe9abc390b196d17f982f61f8ec032ded31
+RUN git checkout 20404d7924392250587006f535fb59c9166bf137
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -98,7 +98,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 485c4838fa75d04fa6e45c8a47ba9b2b59e58c68 \
+RUN git checkout 5e9a1e1e26b417c85e8c46c62a4ac71f22f2309b \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -119,7 +119,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 4bee50c920256bcf827d720de540ded0df465954
+    && git checkout 73af29c8238a506b2f349f6702c6e33ccaeb0e60
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
