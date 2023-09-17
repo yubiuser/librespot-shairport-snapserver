@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 4d402e690c67457ca2d462670db39330bbceb4cf
+   && git checkout 054074c920d5c6acf0210faa3cd849dc4e065828
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,8 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 481f08199ca31c60c9a3475f1064e6b06a503d12 \
-    && sed -i 's/\-\-use-stderr //' "./server/streamreader/airplay_stream.cpp" \
+    && git checkout abe6dea35ad80f71d1046006aa19170752d95e35 \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
@@ -96,7 +95,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 0df63b98505aaad55a1cf588176249dd5036b467
+RUN git checkout 20404d7924392250587006f535fb59c9166bf137
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -111,7 +110,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 92f011178e662e732e13a6b9e38e79c731702bbe \
+RUN git checkout 3b761738e0e5995b06de9bacbcf9bb875949f266 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -133,7 +132,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 6e6b2a59591c97588f4f37cc3b2c91bf68cb0d7b
+    && git checkout 53d922e4d4651815fcbd51fe530d2b61466989c5
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \

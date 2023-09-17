@@ -1,6 +1,6 @@
 services:
   snapcast:
-    image: ghcr.io/yubiuser/yubiuser/librespot-shairport-snapserver:latest
+    image: ghcr.io/yubiuser/librespot-shairport-snapserver:latest
     container_name: snapcast
     restart: unless-stopped
     network_mode: host
