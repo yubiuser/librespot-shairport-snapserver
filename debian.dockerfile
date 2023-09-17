@@ -110,7 +110,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 5e9a1e1e26b417c85e8c46c62a4ac71f22f2309b \
+RUN git checkout 3b761738e0e5995b06de9bacbcf9bb875949f266 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -132,7 +132,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 73af29c8238a506b2f349f6702c6e33ccaeb0e60
+    && git checkout 53d922e4d4651815fcbd51fe530d2b61466989c5
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
