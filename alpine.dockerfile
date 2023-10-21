@@ -67,7 +67,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout abe6dea35ad80f71d1046006aa19170752d95e35 \
+    && git checkout 61ff3032b97b9fe5fc169b4a80c76040266a4b93 \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
@@ -83,7 +83,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 20404d7924392250587006f535fb59c9166bf137
+RUN git checkout 40590affd29ffdcf74768e2b06d67c2241676abb
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -98,7 +98,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 3b761738e0e5995b06de9bacbcf9bb875949f266 \
+RUN git checkout 5fb99599d87f09a38497c698173b46ac901ec7ce \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -119,7 +119,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 53d922e4d4651815fcbd51fe530d2b61466989c5
+    && git checkout 23946b53b3bf903207fbc539577d865a2d241f01
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
