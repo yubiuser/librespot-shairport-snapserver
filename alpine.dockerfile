@@ -67,7 +67,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 61ff3032b97b9fe5fc169b4a80c76040266a4b93 \
+    && git checkout 39ee4cc3a5dffc57221015dbc291fb429ac82835 \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
@@ -119,7 +119,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 23946b53b3bf903207fbc539577d865a2d241f01
+    && git checkout 5f9a88fb74604fad410b9fbecd3be3f85b51c834
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
