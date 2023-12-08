@@ -145,6 +145,7 @@ RUN mkdir /shairport-libs \
 
 ###### BASE START ######
 FROM docker.io/alpine:${alpine_version} as base
+ARG S6_OVERLAY_VERSION
 RUN apk add --no-cache \
     avahi \
     dbus \
