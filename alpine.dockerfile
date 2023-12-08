@@ -1,4 +1,7 @@
-FROM docker.io/alpine:3.18 as builder
+ARG alpine_version=3.19
+ARG S6_OVERLAY_VERSION=3.1.6.2
+
+FROM docker.io/alpine:${alpine_version} as builder
 RUN apk add --no-cache \
     # LIBRESPOT
     cargo \
@@ -141,8 +144,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.18 as base
-ARG S6_OVERLAY_VERSION=3.1.6.2
+FROM docker.io/alpine:${alpine_version} as base
 RUN apk add --no-cache \
     avahi \
     dbus \
@@ -164,7 +166,7 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.18
+FROM docker.io/alpine:${alpine_version}
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
