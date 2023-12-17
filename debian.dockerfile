@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 054074c920d5c6acf0210faa3cd849dc4e065828
+   && git checkout 886617e41c2177d0cb184cb761aa64acc8695a88
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,7 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout abe6dea35ad80f71d1046006aa19170752d95e35 \
+    && git checkout 2c575370526fa58a224bd82bf2ee614023378f37 \
     && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
@@ -95,7 +95,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 20404d7924392250587006f535fb59c9166bf137
+RUN git checkout 40590affd29ffdcf74768e2b06d67c2241676abb
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -110,7 +110,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 3b761738e0e5995b06de9bacbcf9bb875949f266 \
+RUN git checkout 5fb99599d87f09a38497c698173b46ac901ec7ce \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -132,7 +132,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 53d922e4d4651815fcbd51fe530d2b61466989c5
+    && git checkout e36ec5c45d872cd1bdc59a24b805560b5e7029aa
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -155,7 +155,7 @@ RUN mkdir /shairport-libs \
 
 ###### BASE START ######
 FROM docker.io/debian:bookworm-slim as base
-ARG S6_OVERLAY_VERSION=3.1.5.0
+ARG S6_OVERLAY_VERSION=3.1.6.2
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
         ca-certificates \
