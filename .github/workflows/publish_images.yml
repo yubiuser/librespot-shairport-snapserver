@@ -21,7 +21,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v4.1.2
 
       - name: Revert CPU limit
         run: |
