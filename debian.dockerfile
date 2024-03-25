@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 886617e41c2177d0cb184cb761aa64acc8695a88
+   && git checkout 4d35c5ffe222c839d1532d8afac78fe4c37043b3
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,8 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 2c575370526fa58a224bd82bf2ee614023378f37 \
-    && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
+    && git checkout 86cd4b2b63e750a72e0dfe6a46d47caf01426c8d
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -95,7 +94,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 40590affd29ffdcf74768e2b06d67c2241676abb
+RUN git checkout bdfa68a9e6457632604edb7cc7f5df0c4d23dd08
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -110,7 +109,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 5fb99599d87f09a38497c698173b46ac901ec7ce \
+RUN git checkout 6777e562b4c0cec54b8f419b85db48521258c605 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -132,7 +131,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout e36ec5c45d872cd1bdc59a24b805560b5e7029aa
+    && git checkout 9862793256cf897330b4997fee66f488cbdb77cf
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -204,7 +203,7 @@ COPY --from=base /tmp-libs/ /lib/x86_64-linux-gnu/
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
