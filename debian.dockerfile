@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 4d35c5ffe222c839d1532d8afac78fe4c37043b3
+   && git checkout a6065d6bed3d40dabb9613fe773124e5b8380ecc
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,7 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 86cd4b2b63e750a72e0dfe6a46d47caf01426c8d
+    && git checkout 245921009e015ed3cd1f635aed51b63cae7c1600
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -94,7 +94,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout bdfa68a9e6457632604edb7cc7f5df0c4d23dd08
+RUN git checkout eb23e03e9f7dc735f37b8e413fb803f1265938e2
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -109,7 +109,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 6777e562b4c0cec54b8f419b85db48521258c605 \
+RUN git checkout 59ccf05444f88f7ceaa86c00f9bb64cc06c26cb4 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -119,7 +119,7 @@ WORKDIR /
 ### ALAC ###
 RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
-RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
+RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 )) \
@@ -131,7 +131,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 9862793256cf897330b4997fee66f488cbdb77cf
+    && git checkout 5d24d847683aad97eeb4efe6448ac726feb50143
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
