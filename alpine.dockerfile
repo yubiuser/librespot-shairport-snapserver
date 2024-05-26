@@ -1,4 +1,4 @@
-ARG alpine_version=3.19
+ARG alpine_version=3.20
 ARG S6_OVERLAY_VERSION=3.1.6.2
 
 FROM docker.io/alpine:${alpine_version} as builder
@@ -55,7 +55,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout a6065d6bed3d40dabb9613fe773124e5b8380ecc
+   && git checkout 7d45a942910cde9189e6a166d935e0373b4b0867
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -70,7 +70,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 245921009e015ed3cd1f635aed51b63cae7c1600
+    && git checkout 6754b3a15a6967d02fe9e78d2270694344425c6f
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -100,7 +100,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 59ccf05444f88f7ceaa86c00f9bb64cc06c26cb4 \
+RUN git checkout fc8d83fdf5fa16b1312536eaddc3e18854a50e6d \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -121,7 +121,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 5d24d847683aad97eeb4efe6448ac726feb50143
+    && git checkout 2ec6068beb2e85052d38d204019397eb0e88dcf5
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
