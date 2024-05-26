@@ -43,7 +43,7 @@ To build the image simply run
 
 ## Notes
 
-- Based on Alpine 3:19; final image size is ~116MB
+- Based on Alpine 3:20; final image size is ~116MB
 - All `(c)make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
 - `s6-overlay` is used as `init` system (same as the [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)). This is necessary, because *shairport-sync* needs a companion application called [NQPTP](https://github.com/mikebrady/nqptp) which needs to be started from `root` to run as deamon.
   - `s6-rc` with configured dependencies is used to start all services. `snapserver` should start as last
