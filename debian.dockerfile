@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 886617e41c2177d0cb184cb761aa64acc8695a88
+   && git checkout a6065d6bed3d40dabb9613fe773124e5b8380ecc
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,8 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 2c575370526fa58a224bd82bf2ee614023378f37 \
-    && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
+    && git checkout 245921009e015ed3cd1f635aed51b63cae7c1600
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -95,7 +94,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 40590affd29ffdcf74768e2b06d67c2241676abb
+RUN git checkout eb23e03e9f7dc735f37b8e413fb803f1265938e2
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -110,7 +109,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 5fb99599d87f09a38497c698173b46ac901ec7ce \
+RUN git checkout 59ccf05444f88f7ceaa86c00f9bb64cc06c26cb4 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -120,7 +119,7 @@ WORKDIR /
 ### ALAC ###
 RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
-RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
+RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 )) \
@@ -132,7 +131,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout e36ec5c45d872cd1bdc59a24b805560b5e7029aa
+    && git checkout 5d24d847683aad97eeb4efe6448ac726feb50143
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -204,7 +203,7 @@ COPY --from=base /tmp-libs/ /lib/x86_64-linux-gnu/
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 

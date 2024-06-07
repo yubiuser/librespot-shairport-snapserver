@@ -5,11 +5,8 @@ Alpine based Docker image for running the [snapserver part of snapcast](https://
 
 Idea adapted from [librespot-snapserver](https://github.com/djmaze/librespot-snapserver) and based on [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)
 
- **Background:** As of 01/2023 the last release of *snapcast* is v0.26 from 12/2021 which is missing 118 commits compared to `develop`.
- Same for *librespot*, last release is v0.46 from 07/2022 which is missing 266 commits compared to `dev`.
- Therefore, everything is compiled from source.
-
- **Note:** Current last commit of the respective development branches for all repos are used to compile the lastest versions.
+ **Background:** When this project started, the last releases of *snapcast* and *librespot* where outdated compared to their respective `develop` branches.
+  Therefore, everything is compiled from source using the development branches for all repos.
 
  **Note** The coresponding Docker image for runinng `snapclient` can be found here: [https://github.com/yubiuser/snapclient-docker](https://github.com/yubiuser/snapclient-docker)
 
@@ -44,13 +41,10 @@ To build the image simply run
 
 `docker build -t librespot-shairport-snapserver:local -f ./alpine.dockerfile .`
 
-
 ## Notes
 
-- Based on Alpine 3:18; final image size is ~116MB
+- Based on Alpine 3:20; final image size is ~116MB
 - All `(c)make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
-- Compiling `snapserver`
-  - Logging of information of the `airplay-stream` metadata handler has been modified from `info` to `debug` to reduce logspam
 - `s6-overlay` is used as `init` system (same as the [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)). This is necessary, because *shairport-sync* needs a companion application called [NQPTP](https://github.com/mikebrady/nqptp) which needs to be started from `root` to run as deamon.
   - `s6-rc` with configured dependencies is used to start all services. `snapserver` should start as last
   - `s6-notifyoncheck` is used to check readiness of the started services `dbus` and `avahi`. The actual check is performed by sending `dbus`messages and analyzing the reply.

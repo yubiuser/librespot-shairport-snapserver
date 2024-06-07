@@ -1,5 +1,5 @@
-ARG alpine_version=3.19
-ARG S6_OVERLAY_VERSION=3.1.6.2
+ARG alpine_version=3.20
+ARG S6_OVERLAY_VERSION=3.2.0.0
 
 FROM docker.io/alpine:${alpine_version} as builder
 RUN apk add --no-cache \
@@ -55,7 +55,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 886617e41c2177d0cb184cb761aa64acc8695a88
+   && git checkout 8f9bec21d7a0d1e095039c1ff9ecd7c532d9e74e
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -70,8 +70,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 2c575370526fa58a224bd82bf2ee614023378f37 \
-    && sed -i 's/LOG(INFO, LOG_TAG) << "Waiting for metadata/LOG(DEBUG, LOG_TAG) << "Waiting for metadata/' "./server/streamreader/airplay_stream.cpp"
+    && git checkout a31238a2fbf63c55c57dded9bfbe82e868f48cef
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -86,7 +85,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 40590affd29ffdcf74768e2b06d67c2241676abb
+RUN git checkout 215da28e21e03e983b79f8232434c1ed1da9ef62
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -101,7 +100,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 5fb99599d87f09a38497c698173b46ac901ec7ce \
+RUN git checkout b8384c4a53632bab028c451a625ef51a1e767f29 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -111,7 +110,7 @@ WORKDIR /
 ### ALAC ###
 RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
-RUN git checkout 96dd59d17b776a7dc94ed9b2c2b4a37177feb3c4 \
+RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 )) \
@@ -122,7 +121,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout e36ec5c45d872cd1bdc59a24b805560b5e7029aa
+    && git checkout 28ae1dae85ac58f78602f9ed0597247851d15473
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -187,7 +186,7 @@ COPY --from=base /tmp-libs/ /usr/lib/
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/build /usr/share/snapserver/snapweb
+COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
