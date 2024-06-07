@@ -1,5 +1,5 @@
 ARG alpine_version=3.20
-ARG S6_OVERLAY_VERSION=3.1.6.2
+ARG S6_OVERLAY_VERSION=3.2.0.0
 
 FROM docker.io/alpine:${alpine_version} as builder
 RUN apk add --no-cache \
