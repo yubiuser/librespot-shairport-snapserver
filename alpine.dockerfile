@@ -1,5 +1,5 @@
 ARG alpine_version=3.20
-ARG S6_OVERLAY_VERSION=3.1.6.2
+ARG S6_OVERLAY_VERSION=3.2.0.0
 
 FROM docker.io/alpine:${alpine_version} as builder
 RUN apk add --no-cache \
@@ -55,7 +55,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 7d45a942910cde9189e6a166d935e0373b4b0867
+   && git checkout 8f9bec21d7a0d1e095039c1ff9ecd7c532d9e74e
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -70,7 +70,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 6754b3a15a6967d02fe9e78d2270694344425c6f
+    && git checkout a31238a2fbf63c55c57dded9bfbe82e868f48cef
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -85,7 +85,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout eb23e03e9f7dc735f37b8e413fb803f1265938e2
+RUN git checkout 215da28e21e03e983b79f8232434c1ed1da9ef62
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -100,7 +100,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout fc8d83fdf5fa16b1312536eaddc3e18854a50e6d \
+RUN git checkout b8384c4a53632bab028c451a625ef51a1e767f29 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -121,7 +121,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 2ec6068beb2e85052d38d204019397eb0e88dcf5
+    && git checkout 28ae1dae85ac58f78602f9ed0597247851d15473
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
