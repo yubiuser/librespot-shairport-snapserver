@@ -4,10 +4,10 @@ ARG S6_OVERLAY_VERSION=3.2.0.0
 FROM docker.io/alpine:${alpine_version} as builder
 RUN apk add --no-cache \
     # LIBRESPOT
-    cargo \
+    avahi-dev \
+    dbus-dev \
+    gettext-static \
     git \
-    llvm16-libs \
-    mold \
     musl-dev\
     pkgconfig \
     # SNAPCAST
@@ -44,10 +44,76 @@ RUN apk add --no-cache \
     xmltoman \
     xxd
 
+ARG alpine_version=3.19
+
+FROM docker.io/alpine:${alpine_version} as avahi
+RUN apk add --no-cache \
+    git \
+    libtool \
+    autoconf \
+    automake \
+    gettext-dev \
+    pkgconfig
+
+RUN git clone https://github.com/avahi/avahi
+WORKDIR /avahi
+RUN autoreconf -vif
+RUN apk add --no-cache \
+    g++ \
+    glib-dev \
+    dbus-dev \
+    expat-dev \
+    build-base
+RUN
+ENV LDFLAGS="$LDFLAGS -lintl"
+RUN   ./configure \
+    --prefix=/usr \
+    --sysconfdir=/etc \
+    --localstatedir=/var \
+    --disable-autoipd \
+    --disable-glib \
+    --disable-gobject \
+    --disable-gdbm \
+    --disable-libdaemon \
+    --disable-libsystemd \
+    --disable-libevent \
+    --disable-qt3 \
+    --disable-qt4 \
+    --disable-qt5 \
+    --disable-gtk \
+    --disable-gtk3 \
+    --disable-mono \
+    --disable-monodoc \
+    --disable-doxygen-doc \
+    --disable-manpages \
+    --enable-compat-libdns_sd \
+    --disable-compat-howl \
+    --disable-python \
+    --with-dbus-sys=/usr/share/dbus-1/system.d \
+    --with-distro="gentoo"
+
+RUN make
+
+
 ###### LIBRESPOT START ######
-FROM builder AS librespot
-# Use faster 'mold' linker and strip debug symbols
-ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
+FROM docker.io/alpine:3.19 AS librespot
+RUN apk add --no-cache \
+    # LIBRESPOT
+    dbus-dev \
+    gettext-static \
+    git \
+    curl \
+    libgcc \
+    gcc \
+    musl-dev \
+    pkgconfig
+COPY --from=avahi /avahi/avahi-client/.libs/libavahi-client.a /usr/lib/
+COPY --from=avahi /avahi/avahi-common/.libs/libavahi-common.a /usr/lib/
+COPY --from=avahi /avahi/avahi-compat-libdns_sd/.libs/libdns_sd.a /usr/lib/
+COPY --from=avahi /avahi/avahi-compat-libdns_sd.pc /usr/lib/pkgconfig/
+
+# Build static binary, strip debug symbols, link all necessary libraries
+ENV RUSTFLAGS="-C target-feature=+crt-static -C strip=symbols -C link-arg=-L/usr/lib/ -C link-arg=-l:libdns_sd.a -C link-arg=-l:libavahi-client.a -C link-arg=-l:libavahi-common.a -C link-arg=-l:libdbus-1.a -C link-arg=-l:libintl.a"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
@@ -57,11 +123,12 @@ RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout 8f9bec21d7a0d1e095039c1ff9ecd7c532d9e74e
 WORKDIR /librespot
-RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
-
-# Gather all shared libaries necessary to run the executable
-RUN mkdir /librespot-libs \
-    && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
+# Setup rust toolchain
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
@@ -151,7 +218,6 @@ RUN apk add --no-cache \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
 # Removes all libaries that will be installed in the final image
-COPY --from=librespot /librespot-libs/ /tmp-libs/
 COPY --from=snapcast /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
 RUN fdupes -d -N /tmp-libs/ /usr/lib/
@@ -184,7 +250,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
+COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
