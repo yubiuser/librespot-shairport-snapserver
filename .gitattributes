@@ -1,0 +1,3 @@
+# Automatically keep our version of files within the .github directory during merges.
+# This allows maintaining custom GitHub Actions workflows while syncing from upstream.
+.github/** merge=ours
