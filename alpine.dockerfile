@@ -158,7 +158,7 @@ RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
-    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
     && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
     && rm -rf /tmp/*
@@ -174,6 +174,19 @@ ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
 RUN apk add --no-cache \
             avahi \
             dbus \
+    && rm -rf /lib/apk/db/*
+
+RUN echo "@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+
+RUN apk add --no-cache \
+    # Install python dependencies for control scripts
+    python3 \
+    py3-pip \
+    py3-gobject3 \
+    py3-mpd2@testing \
+    py3-musicbrainzngs\
+    py3-websocket-client\
+    py3-requests\
     && rm -rf /lib/apk/db/*
 
 # Copy extracted s6-overlay and libs from base
