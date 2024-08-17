@@ -15,7 +15,7 @@ jobs:
       - name: Delete all images from repository without tags
         uses: Chizkiyahu/delete-untagged-ghcr-action@v6.0.0
         with:
-          token: ${{ secrets.PAT_TOKEN }}
+          token: ${{ secrets.ACTIONS_WORKFLOW_PAT }}
           repository_owner: ${{ github.repository_owner }}
           repository: ${{ github.repository }}
           package_name: ${{ env.PACKAGE_NAME }}

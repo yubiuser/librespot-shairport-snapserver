@@ -1,0 +1,107 @@
+# .github/workflows/fork-rebase-upstream.yml
+name: Rebase Upstream onto Branches
+
+on:
+  schedule:
+    # Runs daily at 03:00 UTC (adjust as needed)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allows manual triggering from the Actions tab
+
+# Permissions granted to the GITHUB_TOKEN for this workflow run.
+# These are baseline permissions. The PAT used later has its own broader permissions.
+permissions:
+  contents: write      # Needed for checkout and pushing the successfully rebased branch (using GITHUB_TOKEN)
+  pull-requests: write # Base permission, PAT provides effective permission for gh
+
+jobs:
+  rebase-branches:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Ensure one branch failure doesn't stop others
+      matrix:
+        # Define the branches in your fork to sync with upstream
+        branch: [development, master]
+
+    steps:
+      # Step 1: Check out the repository code for the specific branch
+      - name: Checkout repository - ${{ matrix.branch }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ matrix.branch }}
+          # Use the default GITHUB_TOKEN for checkout initially
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 2: Add the upstream repository as a remote and fetch its branch
+      - name: Add upstream remote and fetch ${{ matrix.branch }}
+        run: |
+          git remote add upstream https://github.com/yubiuser/librespot-shairport-snapserver.git
+          git fetch upstream ${{ matrix.branch }}
+
+      # Step 3: Configure Git committer identity for the Actions bot
+      - name: Configure Git user for rebase
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+
+      # Step 4: Attempt to rebase the local branch onto the corresponding upstream branch
+      - name: Attempt rebase ${{ matrix.branch }} onto upstream/${{ matrix.branch }}
+        id: rebase_attempt
+        continue-on-error: true # Continue even if rebase fails (has conflicts)
+        run: |
+          echo "Attempting rebase of ${{ matrix.branch }} onto upstream/${{ matrix.branch }}"
+          git rebase upstream/${{ matrix.branch }}
+
+      # Step 5: Push the branch if the rebase was successful (using default GITHUB_TOKEN)
+      - name: Push rebased branch if rebase was successful
+        if: steps.rebase_attempt.outcome == 'success'
+        run: |
+          echo "Rebase successful for ${{ matrix.branch }}. Pushing branch."
+          # This push uses the GITHUB_TOKEN implicitly via checkout or needs explicit token if repo is private
+          git push --force-with-lease origin ${{ matrix.branch }}
+
+      # Step 6: Handle rebase conflicts if the rebase failed (using PAT)
+      - name: Handle Rebase Conflicts
+        if: steps.rebase_attempt.outcome == 'failure'
+        run: |
+          echo "Rebase failed for branch ${{ matrix.branch }} with conflicts."
+          echo "Aborting rebase and creating conflict notification PR."
+
+          # 1. Abort the failed rebase
+          git rebase --abort || echo "Rebase abort failed, possibly not in rebase state."
+
+          # 2. Ensure we are back on the original branch
+          git checkout ${{ matrix.branch }}
+
+          # 3. Read the PR template content
+          PR_BODY_CONTENT=$(cat .github/templates/conflict_resolution.md)
+
+          # 4. Define the conflict branch name
+          CONFLICT_BRANCH="upstream-conflict/${{ matrix.branch }}-$(date +%s)"
+
+          # 5. Create the conflict branch from upstream state
+          git checkout -b $CONFLICT_BRANCH upstream/${{ matrix.branch }}
+
+          # 6. Configure Git authentication using gh CLI and the PAT
+          # gh auth setup-git will configure git to use the token provided in GH_TOKEN
+          # This is generally more reliable than embedding the token in the URL
+          echo "Setting up Git authentication using PAT via gh cli..."
+          gh auth setup-git
+
+          # 7. Push the conflict branch using the PAT authentication configured by gh
+          echo "Pushing conflict branch $CONFLICT_BRANCH to origin..."
+          # Now, git push should automatically use the token configured by 'gh auth setup-git'
+          git push origin $CONFLICT_BRANCH
+
+          # 8. Create the Pull Request using gh CLI (already authenticated via GH_TOKEN)
+          echo "Creating PR from $CONFLICT_BRANCH targeting ${{ matrix.branch }}..."
+          gh pr create \
+            --base ${{ matrix.branch }} \
+            --head $CONFLICT_BRANCH \
+            --title "🚨 Rebase Conflict: Review upstream changes for ${{ matrix.branch }}" \
+            --body "$PR_BODY_CONTENT" \
+            || echo "Failed to create PR. It might already exist, or push/permission issues occurred."
+        env:
+          # Provide the PAT as GH_TOKEN. Both gh and git (after gh auth setup-git) will use it.
+          GH_TOKEN: ${{ secrets.ACTIONS_WORKFLOW_PAT }}
+          # ACTIONS_WORKFLOW_PAT: ${{ secrets.ACTIONS_WORKFLOW_PAT }} # Only GH_TOKEN is strictly needed now

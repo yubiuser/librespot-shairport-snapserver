@@ -1,0 +1,177 @@
+# .github/workflows/sync-fork-rebase-conflict-pr.yml
+name: 🤖 Keep Fork Updated (Rebase) & Create Conflict Resolution PR
+
+on:
+  schedule:
+    # Runs daily at 03:00 UTC (adjust as needed)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allows manual triggering from the Actions tab
+
+permissions:
+  contents: write      # Needed for checkout (PAT), push, commit changes by action
+  pull-requests: write # Needed for peter-evans/create-pull-request
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Define the branches in your fork to sync with upstream
+        branch: [development, master]
+
+    steps:
+      # Step 1: Checkout the repository branch using PAT
+      - name: Checkout ${{ matrix.branch }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ matrix.branch }}
+          token: ${{ secrets.ACTIONS_WORKFLOW_PAT }} # Use PAT for authentication
+
+      # Step 2: Add Upstream remote and fetch necessary refs
+      - name: Add Upstream and Fetch
+        run: |
+          git remote add upstream https://github.com/yubiuser/librespot-shairport-snapserver.git || true
+          echo "Fetching upstream/${{ matrix.branch }} and origin/${{ matrix.branch }}..."
+          git fetch upstream ${{ matrix.branch }}
+          git fetch origin ${{ matrix.branch }}
+
+      # Step 3: Configure Git user identity
+      - name: Configure Git user
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "GitHub Actions"
+
+      # Step 4: Attempt the Rebase MANUALLY
+      - name: Attempt Rebase ${{ matrix.branch }} onto upstream/${{ matrix.branch }}
+        id: rebase_attempt
+        continue-on-error: true # Allow workflow to continue if rebase fails
+        run: |
+          echo "Attempting manual rebase of ${{ matrix.branch }} onto upstream/${{ matrix.branch }}"
+          git checkout ${{ matrix.branch }}
+          git rebase upstream/${{ matrix.branch }}
+          REBASE_EXIT_CODE=$?
+          if [ $REBASE_EXIT_CODE -ne 0 ]; then
+             echo "::error::Rebase command failed with exit code $REBASE_EXIT_CODE"
+             echo "Aborting failed rebase..."
+             # Attempt to abort, ignore errors if already aborted or not in rebase state
+             git rebase --abort || true
+          fi
+          exit $REBASE_EXIT_CODE # Exit with original code to set step outcome
+
+      # Step 5: Push if Rebase Succeeded
+      - name: Push rebased branch if rebase was successful
+        if: steps.rebase_attempt.outcome == 'success'
+        run: |
+          echo "✅ Rebase successful for ${{ matrix.branch }}. Pushing branch."
+          # PAT context from checkout should be used
+          git push --force-with-lease origin ${{ matrix.branch }}
+
+      # --- Conflict Handling Steps ---
+
+      # Step 6: Prepare the conflict state in WORKSPACE for PR Action (NO COMMIT, NO ADD)
+      - name: 🛠️ Prepare Conflict State for PR Action
+        # Run only if the manual rebase step failed
+        if: steps.rebase_attempt.outcome == 'failure'
+        id: prep_conflict
+        run: |
+          echo "Manual rebase failed for ${{ matrix.branch }}. Preparing conflict state..."
+
+          # Rigorous Cleanup & Reset to Base State
+          echo "Attempting rigorous cleanup..."
+          git rebase --abort || echo "Rebase not in progress."
+          rm -rf .git/REBASE_HEAD .git/rebase-apply .git/rebase-merge .git/MERGE_HEAD .git/MERGE_MSG .git/MERGE_MODE .git/sequencer || echo "State files cleaned/absent."
+          echo "Checking out base branch: ${{ matrix.branch }}"
+          git checkout ${{ matrix.branch }} # Checkout base branch
+          echo "Resetting base branch '${{ matrix.branch }}' to origin/${{ matrix.branch }} state..."
+          git reset --hard origin/${{ matrix.branch }} # Reset to origin state
+          echo "Cleaning working directory..."
+          git clean -fdx # Clean untracked files
+
+          # Attempt the merge to create conflicts in the working dir/index ON THE BASE BRANCH
+          echo "Attempting merge of upstream/${{ matrix.branch }} into current branch (${{ matrix.branch }}) to create conflict state..."
+          # This modifies the current (base) branch's working dir and index
+          git merge --no-commit --no-ff upstream/${{ matrix.branch }} || echo "Merge command failed as expected (exit code $?)."
+
+          # --- Capture list of files with conflicts ---
+          echo "Identifying conflicted files..."
+          # Get files listed with U (Unmerged) in any column by git status --short
+          # Use sed to remove the status codes and leading space. Handle potential empty output.
+          CONFLICTING_FILES_LIST=$(git status --short | grep '^.U\|U.' | sed 's/^...//')
+          if [ -z "$CONFLICTING_FILES_LIST" ]; then
+             # Check if merge failed but no 'U' files (could be other issues?)
+             if git merge-base --is-ancestral HEAD upstream/${{ matrix.branch }}; then
+                # If merge base exists but merge failed without 'U', something is odd
+                CONFLICTING_FILES_LIST="Merge failed, but no standard conflict markers found. Check 'git status' manually."
+             else
+                # If no merge base, it's a history divergence
+                CONFLICTING_FILES_LIST="Failed merge likely due to unrelated histories. Check 'git status' manually."
+             fi
+          fi
+          # Escape newlines for multiline environment variable and export
+          # Using printf for safer handling of special characters in filenames than echo
+          printf "CONFLICTING_FILES<<EOF\n%s\nEOF\n" "$CONFLICTING_FILES_LIST" >> $GITHUB_ENV
+          echo "Detected Conflicted Files (will be listed in PR):"
+          echo "$CONFLICTING_FILES_LIST" # Log the raw list for debugging
+          # --- End Capture ---
+
+          # --- DO NOT ADD OR COMMIT HERE ---
+          # We leave the working directory with unstaged/unmerged changes
+
+          # Define the target branch name for the action via ENV variable
+          CONFLICT_BRANCH="conflict-resolution/${{ matrix.branch }}-$(date +%s)"
+          echo "CONFLICT_BRANCH=$CONFLICT_BRANCH" >> $GITHUB_ENV
+          echo "Target conflict branch name set to: $CONFLICT_BRANCH"
+
+          echo "Workspace prepared with UNSTAGED conflicts ON branch '${{ matrix.branch }}'."
+          echo "The action will stage changes, create the branch '$CONFLICT_BRANCH', commit, and push."
+
+      # Step 7: Create the Pull Request using peter-evans/create-pull-request
+      # Action will stage changes found in the workspace, create the commit and the branch.
+      - name: 🚨 Create Conflict Resolution PR
+        if: steps.rebase_attempt.outcome == 'failure'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.ACTIONS_WORKFLOW_PAT }}
+          # Action will stage and commit changes from the workspace
+          commit-message: "🚧 CONFLICT: Upstream merge conflict detected for ${{ matrix.branch }}"
+          committer: GitHub Actions <41898282+github-actions[bot]@users.noreply.github.com>
+          author: GitHub Actions <41898282+github-actions[bot]@users.noreply.github.com>
+          # The action will CREATE this branch from the current workspace state
+          branch: ${{ env.CONFLICT_BRANCH }}
+          # The target branch for the pull request
+          base: ${{ matrix.branch }}
+          title: "🚨 Conflict: Resolve upstream merge for ${{ matrix.branch }}"
+          # PR Body includes the captured list of conflicted files
+          body: |
+            **Merge Conflict Resolution Required**
+
+            The automated rebase of `${{ matrix.branch }}` onto `upstream/${{ matrix.branch }}` failed.
+
+            This branch (`${{ env.CONFLICT_BRANCH }}`) was created by attempting a merge and committing the result, **including any conflicts**. Please resolve them directly in this branch.
+
+            **Conflicted Files Detected by Workflow:**
+            ```
+            ${{ env.CONFLICTING_FILES }}
+            ```
+            *(Please verify with `git status` after checking out the branch locally or opening in Codespaces)*
+
+            [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?repo=${{ github.repository }}&ref=${{ env.CONFLICT_BRANCH }})
+
+            **Resolution Instructions:**
+            1. Check out this branch (`${{ env.CONFLICT_BRANCH }}`) locally or open in Codespaces.
+            2. Run `git status` to confirm unmerged paths (files listed above).
+            3. Resolve the merge conflicts in the listed files (look for `<<<<<<<`, `=======`, `>>>>>>>` or handle modify/delete).
+            4. Stage the resolved files (`git add .`).
+            5. Amend the commit created by this action (`git commit --amend --no-edit`).
+            6. Force-push the corrected branch (`git push --force-with-lease origin ${{ env.CONFLICT_BRANCH }}`).
+            7. Once the PR checks pass, **merge this Pull Request** into `${{ matrix.branch }}`.
+          # Ensure the action deletes the source branch after merging the PR
+          delete-branch: true
+
+      # Step 8: Log if skipped (Placeholder - Add specific condition if needed)
+      # - name: Log Skipped Status
+      #   if: <condition_for_skipped_rebase> # e.g., based on check_sync_status if added back
+      #   run: |
+      #     echo "🚀 Branch ${{ matrix.branch }} was already in sync or rebase was skipped."
