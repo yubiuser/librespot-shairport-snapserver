@@ -55,7 +55,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 299b7dec20b45b9fa19a4a46252079e8a8b7a8ba
+   && git checkout 2ea7436e60750d56e747abfca3893be39c0162fd
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -70,7 +70,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 0a622d8441cf66c8c1d0eda9c4858687a0e87b5d
+    && git checkout 208066e5bb3f77482a62301283a8075912a7e22c
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -121,7 +121,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 9650990523a719768fcedd234fa5c0dcff2185ec
+    && git checkout 92a933a376f7e5f838b4ed3f20e524a0b6f74f9d
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
