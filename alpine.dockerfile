@@ -46,7 +46,7 @@ RUN apk add --no-cache \
     xxd
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:${alpine_version} AS librespot
+FROM builder AS librespot
 # Strip debug symbols
 ENV RUSTFLAGS="-C strip=symbols"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
@@ -64,7 +64,7 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 ENV RUSTFLAGS="-C target-feature=-crt-static"
-RUN cargo build --no-default-features --features with-dns-sd -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
+RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
 
 # Gather all shared libaries necessary to run the executable
 RUN mkdir /librespot-libs \
