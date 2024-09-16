@@ -4,12 +4,13 @@ ARG S6_OVERLAY_VERSION=3.2.0.0
 FROM docker.io/alpine:${alpine_version} AS builder
 RUN apk add --no-cache \
     # LIBRESPOT
-    cargo \
+    avahi-dev \
+    libgcc \
+    gcc \
     git \
-    llvm16-libs \
-    mold \
-    musl-dev\
+    musl-dev \
     pkgconfig \
+    curl \
     # SNAPCAST
     cmake \
     alsa-lib-dev \
@@ -45,23 +46,29 @@ RUN apk add --no-cache \
     xxd
 
 ###### LIBRESPOT START ######
-FROM builder AS librespot
-# Use faster 'mold' linker and strip debug symbols
-ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
+FROM docker.io/alpine:${alpine_version} AS librespot
+# Strip debug symbols
+ENV RUSTFLAGS="-C strip=symbols"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
+
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout 22a8850fe98641c25f4b056dbcf36e332367d4cd
 WORKDIR /librespot
-RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+RUN cargo build --no-default-features --features with-dns-sd -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
 
 # Gather all shared libaries necessary to run the executable
 RUN mkdir /librespot-libs \
-    && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
+   && ldd /librespot/target/x86_64-unknown-linux-musl/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
@@ -158,7 +165,7 @@ RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
-    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
     && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
     && rm -rf /tmp/*
