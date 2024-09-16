@@ -55,7 +55,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 2ea7436e60750d56e747abfca3893be39c0162fd
+   && git checkout 22a8850fe98641c25f4b056dbcf36e332367d4cd
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
