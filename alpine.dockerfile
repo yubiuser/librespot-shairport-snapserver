@@ -191,7 +191,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
+COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
