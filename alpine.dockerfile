@@ -4,13 +4,11 @@ ARG S6_OVERLAY_VERSION=3.2.0.0
 FROM docker.io/alpine:${alpine_version} AS builder
 RUN apk add --no-cache \
     # LIBRESPOT
-    avahi-dev \
-    libgcc \
-    gcc \
+    cargo \
+    clang18-dev \
     git \
     musl-dev \
     pkgconfig \
-    curl \
     # SNAPCAST
     cmake \
     alsa-lib-dev \
@@ -59,16 +57,16 @@ RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git checkout 22a8850fe98641c25f4b056dbcf36e332367d4cd
 WORKDIR /librespot
-ENV RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
-ENV RUSTFLAGS="-C target-feature=-crt-static"
-RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
+# aws-lc-rs requires bindgen for creating the crate
+# there are pre-build crates for x86_64-unknown-linux-musl but alpine images uses
+# x86_64-alpine-linux-musl as platform
+RUN cargo install --force --locked bindgen-cli
+ENV PATH=/root/.cargo/bin/:$PATH
+RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
 # Gather all shared libaries necessary to run the executable
 RUN mkdir /librespot-libs \
-   && ldd /librespot/target/x86_64-unknown-linux-musl/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
+   && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
@@ -191,7 +189,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
+COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
