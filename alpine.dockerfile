@@ -181,6 +181,19 @@ RUN apk add --no-cache \
             dbus \
     && rm -rf /lib/apk/db/*
 
+RUN echo "@testing https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+
+RUN apk add --no-cache \
+    # Install python dependencies for control scripts
+    python3 \
+    py3-pip \
+    py3-gobject3 \
+    py3-mpd2@testing \
+    py3-musicbrainzngs\
+    py3-websocket-client\
+    py3-requests\
+    && rm -rf /lib/apk/db/*
+
 # Copy extracted s6-overlay and libs from base
 COPY --from=base /command /command/
 COPY --from=base /package/ /package/
@@ -191,6 +204,7 @@ COPY --from=base /tmp-libs/ /usr/lib/
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapcast /snapcast/server/etc/plug-ins /usr/share/snapserver/plug-ins
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/

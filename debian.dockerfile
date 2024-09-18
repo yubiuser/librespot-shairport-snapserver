@@ -64,7 +64,7 @@ ENV CARGO_INCREMENTAL=0
 ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout a6065d6bed3d40dabb9613fe773124e5b8380ecc
+   && git checkout 299b7dec20b45b9fa19a4a46252079e8a8b7a8ba
 WORKDIR /librespot
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
@@ -79,7 +79,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 245921009e015ed3cd1f635aed51b63cae7c1600
+    && git checkout 0a622d8441cf66c8c1d0eda9c4858687a0e87b5d
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -94,7 +94,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout eb23e03e9f7dc735f37b8e413fb803f1265938e2
+RUN git checkout 66a15126578548ed544ab5b59acdece3825c2699
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -109,7 +109,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 59ccf05444f88f7ceaa86c00f9bb64cc06c26cb4 \
+RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -131,7 +131,7 @@ RUN cp /usr/local/lib/libalac.* /usr/lib/
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 5d24d847683aad97eeb4efe6448ac726feb50143
+    && git checkout 9650990523a719768fcedd234fa5c0dcff2185ec
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -172,7 +172,7 @@ RUN fdupes -d -N /tmp-libs/ /lib/x86_64-linux-gnu/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
-    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
     && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
     && rm -rf /tmp/*
@@ -190,6 +190,15 @@ RUN apt-get update \
         ca-certificates \
         avahi-daemon \
         dbus\
+        # Python dependencies for control scripts
+        python3 \
+        python3-pip \
+        python3-gi \
+        python3-dbus \
+        python3-musicbrainzngs \
+        python3-mpd \
+        python3-requests \
+        python3-websocket \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -203,6 +212,7 @@ COPY --from=base /tmp-libs/ /lib/x86_64-linux-gnu/
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapcast /snapcast/server/etc/plug-ins /usr/share/snapserver/plug-ins
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
