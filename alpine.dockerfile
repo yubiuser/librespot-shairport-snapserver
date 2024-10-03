@@ -4,9 +4,12 @@ ARG S6_OVERLAY_VERSION=3.2.0.0
 FROM docker.io/alpine:${alpine_version} AS builder
 RUN apk add --no-cache \
     # LIBRESPOT
-    cargo \
-    clang18-dev \
+    dbus-dev \
+    gettext-static \
     git \
+    curl \
+    libgcc \
+    gcc \
     musl-dev \
     pkgconfig \
     # SNAPCAST
@@ -45,8 +48,9 @@ RUN apk add --no-cache \
 
 ###### LIBRESPOT START ######
 FROM builder AS librespot
+
 # Strip debug symbols
-ENV RUSTFLAGS="-C strip=symbols"
+ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
@@ -58,16 +62,13 @@ RUN git clone https://github.com/librespot-org/librespot \
    && git fetch origin pull/1347/head:pr1347 \
    && git checkout pr1347
 WORKDIR /librespot
-# aws-lc-rs requires bindgen for creating the crate
-# there are pre-build crates for x86_64-unknown-linux-musl but alpine images uses
-# x86_64-alpine-linux-musl as platform
-RUN cargo install --force --locked bindgen-cli
-ENV PATH=/root/.cargo/bin/:$PATH
-RUN cargo build --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))
+# Setup rust toolchain
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+RUN cargo build --release --no-default-features --features with-avahi -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
 
-# Gather all shared libaries necessary to run the executable
-RUN mkdir /librespot-libs \
-   && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
@@ -157,7 +158,6 @@ RUN apk add --no-cache \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
 # Removes all libaries that will be installed in the final image
-COPY --from=librespot /librespot-libs/ /tmp-libs/
 COPY --from=snapcast /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
 RUN fdupes -d -N /tmp-libs/ /usr/lib/
@@ -190,7 +190,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
+COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
