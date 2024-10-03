@@ -55,14 +55,15 @@ ENV CARGO_INCREMENTAL=0
 
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
+   && git fetch origin pull/1347/head:pr1347 \
+   && git checkout pr1347
 WORKDIR /librespot
 # aws-lc-rs requires bindgen for creating the crate
 # there are pre-build crates for x86_64-unknown-linux-musl but alpine images uses
 # x86_64-alpine-linux-musl as platform
 RUN cargo install --force --locked bindgen-cli
 ENV PATH=/root/.cargo/bin/:$PATH
-RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
+RUN cargo build --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))
 
 # Gather all shared libaries necessary to run the executable
 RUN mkdir /librespot-libs \
