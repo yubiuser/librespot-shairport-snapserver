@@ -37,7 +37,7 @@ jobs:
 
       - name: Revert CPU limit
         run: |
-          sed -i 's/(( \$(nproc) -1 ))/(nproc)/g' './alpine.dockerfile' './debian.dockerfile'
+          sed -i 's/(( \$(nproc) -1 ))/(nproc)/g' './alpine.dockerfile'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.2.0
