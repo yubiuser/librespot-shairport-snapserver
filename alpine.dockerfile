@@ -1,9 +1,10 @@
 ARG alpine_version=3.20
 ARG S6_OVERLAY_VERSION=3.2.0.0
 
-FROM docker.io/alpine:${alpine_version} AS builder
+###### LIBRESPOT START ######
+FROM docker.io/alpine:${alpine_version} AS librespot
+
 RUN apk add --no-cache \
-    # LIBRESPOT
     dbus-dev \
     gettext-static \
     git \
@@ -11,45 +12,9 @@ RUN apk add --no-cache \
     libgcc \
     gcc \
     musl-dev \
-    pkgconfig \
-    # SNAPCAST
-    cmake \
-    alsa-lib-dev \
-    avahi-dev \
-    bash \
-    boost-dev \
-    expat-dev \
-    flac-dev \
-    git \
-    libvorbis-dev \
-    npm \
-    soxr-dev \
-    opus-dev \
-    # SHAIRPORT
-    alpine-sdk \
-    alsa-lib-dev \
-    autoconf \
-    automake \
-    avahi-dev \
-    dbus \
-    ffmpeg-dev \
-    git \
-    libtool \
-    libdaemon-dev \
-    libplist-dev \
-    libsodium-dev \
-    libgcrypt-dev \
-    libconfig-dev \
-    openssl-dev \
-    popt-dev \
-    soxr-dev \
-    xmltoman \
-    xxd
+    pkgconfig
 
-###### LIBRESPOT START ######
-FROM builder AS librespot
-
-# Strip debug symbols
+# Strip debug symbols and build a static binary
 ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
@@ -57,22 +22,41 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 
+# Clone librespot and apply PR 1347 which contains the new 'avahi' zeroconf backend
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
    && git fetch origin pull/1347/head:pr1347 \
    && git checkout pr1347
 WORKDIR /librespot
+
 # Setup rust toolchain
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+
 RUN cargo build --release --no-default-features --features with-avahi -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
 
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
-FROM builder AS snapcast
+FROM docker.io/alpine:${alpine_version} AS snapcast
+
+RUN apk add --no-cache \
+    # SNAPCAST
+    alsa-lib-dev \
+    avahi-dev \
+    bash \
+    build-base \
+    boost-dev \
+    cmake \
+    expat-dev \
+    flac-dev \
+    git \
+    libvorbis-dev \
+    npm \
+    soxr-dev \
+    opus-dev
 
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
@@ -102,7 +86,28 @@ WORKDIR /
 ###### SNAPCAST BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM builder AS shairport
+FROM docker.io/alpine:${alpine_version} AS shairport
+
+RUN apk add --no-cache \
+    alpine-sdk \
+    alsa-lib-dev \
+    autoconf \
+    automake \
+    avahi-dev \
+    dbus \
+    ffmpeg-dev \
+    git \
+    libtool \
+    libdaemon-dev \
+    libplist-dev \
+    libsodium-dev \
+    libgcrypt-dev \
+    libconfig-dev \
+    openssl-dev \
+    popt-dev \
+    soxr-dev \
+    xmltoman \
+    xxd
 
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
