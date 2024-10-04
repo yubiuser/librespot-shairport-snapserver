@@ -1,14 +1,13 @@
 ARG alpine_version=3.20
 ARG S6_OVERLAY_VERSION=3.2.0.0
 
-FROM docker.io/alpine:${alpine_version} as builder
+FROM docker.io/alpine:${alpine_version} AS builder
 RUN apk add --no-cache \
     # LIBRESPOT
     cargo \
+    clang18-dev \
     git \
-    llvm16-libs \
-    mold \
-    musl-dev\
+    musl-dev \
     pkgconfig \
     # SNAPCAST
     cmake \
@@ -46,22 +45,28 @@ RUN apk add --no-cache \
 
 ###### LIBRESPOT START ######
 FROM builder AS librespot
-# Use faster 'mold' linker and strip debug symbols
-ENV RUSTFLAGS="-C link-args=-fuse-ld=mold -C strip=symbols"
+# Strip debug symbols
+ENV RUSTFLAGS="-C strip=symbols"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
+
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 8f9bec21d7a0d1e095039c1ff9ecd7c532d9e74e
+   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
 WORKDIR /librespot
+# aws-lc-rs requires bindgen for creating the crate
+# there are pre-build crates for x86_64-unknown-linux-musl but alpine images uses
+# x86_64-alpine-linux-musl as platform
+RUN cargo install --force --locked bindgen-cli
+ENV PATH=/root/.cargo/bin/:$PATH
 RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
 
 # Gather all shared libaries necessary to run the executable
 RUN mkdir /librespot-libs \
-    && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
+   && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
@@ -70,7 +75,7 @@ FROM builder AS snapcast
 ### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout a31238a2fbf63c55c57dded9bfbe82e868f48cef
+    && git checkout 208066e5bb3f77482a62301283a8075912a7e22c
 WORKDIR /snapcast
 RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose \
@@ -85,7 +90,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 215da28e21e03e983b79f8232434c1ed1da9ef62
+RUN git checkout 66a15126578548ed544ab5b59acdece3825c2699
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -100,7 +105,7 @@ FROM builder AS shairport
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout b8384c4a53632bab028c451a625ef51a1e767f29 \
+RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -121,7 +126,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 28ae1dae85ac58f78602f9ed0597247851d15473
+    && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -143,7 +148,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:${alpine_version} as base
+FROM docker.io/alpine:${alpine_version} AS base
 ARG S6_OVERLAY_VERSION
 RUN apk add --no-cache \
     avahi \
@@ -158,7 +163,7 @@ RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
-    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
     && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
     && rm -rf /tmp/*
