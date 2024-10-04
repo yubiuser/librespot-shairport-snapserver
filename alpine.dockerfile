@@ -55,7 +55,7 @@ ENV CARGO_INCREMENTAL=0
 
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 22a8850fe98641c25f4b056dbcf36e332367d4cd
+   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
 WORKDIR /librespot
 # aws-lc-rs requires bindgen for creating the crate
 # there are pre-build crates for x86_64-unknown-linux-musl but alpine images uses
@@ -126,7 +126,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 92a933a376f7e5f838b4ed3f20e524a0b6f74f9d
+    && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
