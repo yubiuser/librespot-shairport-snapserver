@@ -23,9 +23,6 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-          - platform: linux/arm64
-          - platform: linux/arm/v6
-          - platform: linux/arm/v7
     steps:
       - name: Prepare name for digest up/download
         run: |
