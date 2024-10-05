@@ -25,17 +25,26 @@ WORKDIR /librespot
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal --default-toolchain nightly
 
-# Strip debug symbols, build a static binary, optimize for size and enable thin LTO
-ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin"
+# Size optimizations from https://github.com/johnthagen/min-sized-rust
+# Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
+ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -C panic=abort"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 
-RUN cargo build --release --no-default-features --features with-avahi -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
+# Install the source code for the standard library as we re-build it with the nightly toolchain
+RUN rustup component add rust-src --toolchain nightly
+
+# Build the binary, optimize libstd with build-std
+RUN cargo +nightly build \
+    -Z build-std=std,panic_abort \
+    -Z build-std-features="optimize_for_size,panic_immediate_abort" \
+    --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))\
+    --target x86_64-unknown-linux-musl
 
 ###### LIBRESPOT END ######
 
