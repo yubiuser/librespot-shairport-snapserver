@@ -5,20 +5,16 @@ ARG S6_OVERLAY_VERSION=3.2.0.0
 FROM docker.io/alpine:${alpine_version} AS librespot
 
 RUN apk add --no-cache \
-    dbus-dev \
-    gettext-static \
     git \
     curl \
     libgcc \
     gcc \
-    musl-dev \
-    pkgconfig
+    musl-dev
 
-# Clone librespot and apply PR 1347 which contains the new 'avahi' zeroconf backend
+# Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git fetch origin pull/1347/head:pr1347 \
-   && git checkout pr1347
+   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -26,6 +22,9 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal --default-toolchain nightly
+
+# Install the source code for the standard library as we re-build it with the nightly toolchain
+RUN rustup component add rust-src --toolchain nightly
 
 # Size optimizations from https://github.com/johnthagen/min-sized-rust
 # Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
@@ -36,14 +35,11 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 
-# Install the source code for the standard library as we re-build it with the nightly toolchain
-RUN rustup component add rust-src --toolchain nightly
-
 # Build the binary, optimize libstd with build-std
 RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
     -Z build-std-features="optimize_for_size,panic_immediate_abort" \
-    --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))\
+    --release --no-default-features -j $(( $(nproc) -1 ))\
     --target x86_64-unknown-linux-musl
 
 ###### LIBRESPOT END ######
