@@ -14,14 +14,6 @@ RUN apk add --no-cache \
     musl-dev \
     pkgconfig
 
-# Strip debug symbols and build a static binary
-ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static"
-# Use the new "sparse" protocol which speeds up the cargo index update massively
-# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
-# Disable incremental compilation
-ENV CARGO_INCREMENTAL=0
-
 # Clone librespot and apply PR 1347 which contains the new 'avahi' zeroconf backend
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
@@ -35,6 +27,14 @@ ENV RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
 
+# Strip debug symbols, build a static binary, optimize for size and enable thin LTO
+ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin"
+# Use the new "sparse" protocol which speeds up the cargo index update massively
+# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
+# Disable incremental compilation
+ENV CARGO_INCREMENTAL=0
+
 RUN cargo build --release --no-default-features --features with-avahi -j $(( $(nproc) -1 )) --target x86_64-unknown-linux-musl
 
 ###### LIBRESPOT END ######
@@ -42,23 +42,22 @@ RUN cargo build --release --no-default-features --features with-avahi -j $(( $(n
 ###### SNAPCAST BUNDLE START ######
 FROM docker.io/alpine:${alpine_version} AS snapcast
 
+### SNAPSERVER ###
 RUN apk add --no-cache \
-    # SNAPCAST
     alsa-lib-dev \
     avahi-dev \
     bash \
     build-base \
     boost-dev \
-    cmake \
     expat-dev \
     flac-dev \
+    cmake \
     git \
     libvorbis-dev \
     npm \
     soxr-dev \
     opus-dev
 
-### SNAPSERVER ###
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
     && git checkout 208066e5bb3f77482a62301283a8075912a7e22c
