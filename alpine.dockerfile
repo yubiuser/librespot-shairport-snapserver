@@ -62,7 +62,7 @@ WORKDIR /librespot
 # x86_64-alpine-linux-musl as platform
 RUN cargo install --force --locked bindgen-cli
 ENV PATH=/root/.cargo/bin/:$PATH
-RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
+RUN cargo build --release --no-default-features -j $(( $(nproc) -1 ))
 
 # Gather all shared libaries necessary to run the executable
 RUN mkdir /librespot-libs \
