@@ -1,78 +1,68 @@
 ARG alpine_version=3.20
 ARG S6_OVERLAY_VERSION=3.2.0.0
 
-FROM docker.io/alpine:${alpine_version} AS builder
-RUN apk add --no-cache \
-    # LIBRESPOT
-    cargo \
-    clang18-dev \
-    git \
-    musl-dev \
-    pkgconfig \
-    # SNAPCAST
-    cmake \
-    alsa-lib-dev \
-    avahi-dev \
-    bash \
-    boost-dev \
-    expat-dev \
-    flac-dev \
-    git \
-    libvorbis-dev \
-    npm \
-    soxr-dev \
-    opus-dev \
-    # SHAIRPORT
-    alpine-sdk \
-    alsa-lib-dev \
-    autoconf \
-    automake \
-    avahi-dev \
-    dbus \
-    ffmpeg-dev \
-    git \
-    libtool \
-    libdaemon-dev \
-    libplist-dev \
-    libsodium-dev \
-    libgcrypt-dev \
-    libconfig-dev \
-    openssl-dev \
-    popt-dev \
-    soxr-dev \
-    xmltoman \
-    xxd
-
 ###### LIBRESPOT START ######
-FROM builder AS librespot
-# Strip debug symbols
-ENV RUSTFLAGS="-C strip=symbols"
+FROM docker.io/alpine:${alpine_version} AS librespot
+
+RUN apk add --no-cache \
+    git \
+    curl \
+    libgcc \
+    gcc \
+    musl-dev
+
+# Clone librespot and checkout the latest commit
+RUN git clone https://github.com/librespot-org/librespot \
+   && cd librespot \
+   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
+WORKDIR /librespot
+
+# Setup rust toolchain
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal --default-toolchain nightly
+
+# Install the source code for the standard library as we re-build it with the nightly toolchain
+RUN rustup component add rust-src --toolchain nightly
+
+# Size optimizations from https://github.com/johnthagen/min-sized-rust
+# Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
+ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -C panic=abort"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 
-RUN git clone https://github.com/librespot-org/librespot \
-   && cd librespot \
-   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
-WORKDIR /librespot
-# aws-lc-rs requires bindgen for creating the crate
-# there are pre-build crates for x86_64-unknown-linux-musl but alpine images uses
-# x86_64-alpine-linux-musl as platform
-RUN cargo install --force --locked bindgen-cli
-ENV PATH=/root/.cargo/bin/:$PATH
-RUN cargo build --release --no-default-features --features with-dns-sd -j $(( $(nproc) -1 ))
+# Build the binary, optimize libstd with build-std
+RUN cargo +nightly build \
+    -Z build-std=std,panic_abort \
+    -Z build-std-features="optimize_for_size,panic_immediate_abort" \
+    --release --no-default-features -j $(( $(nproc) -1 ))\
+    --target x86_64-unknown-linux-musl
 
-# Gather all shared libaries necessary to run the executable
-RUN mkdir /librespot-libs \
-   && ldd /librespot/target/release/librespot | cut -d" " -f3 | xargs cp --dereference --target-directory=/librespot-libs/
 ###### LIBRESPOT END ######
 
 ###### SNAPCAST BUNDLE START ######
-FROM builder AS snapcast
+FROM docker.io/alpine:${alpine_version} AS snapcast
 
 ### SNAPSERVER ###
+RUN apk add --no-cache \
+    alsa-lib-dev \
+    avahi-dev \
+    bash \
+    build-base \
+    boost-dev \
+    expat-dev \
+    flac-dev \
+    cmake \
+    git \
+    libvorbis-dev \
+    npm \
+    soxr-dev \
+    opus-dev
+
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
     && git checkout 208066e5bb3f77482a62301283a8075912a7e22c
@@ -100,7 +90,28 @@ WORKDIR /
 ###### SNAPCAST BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM builder AS shairport
+FROM docker.io/alpine:${alpine_version} AS shairport
+
+RUN apk add --no-cache \
+    alpine-sdk \
+    alsa-lib-dev \
+    autoconf \
+    automake \
+    avahi-dev \
+    dbus \
+    ffmpeg-dev \
+    git \
+    libtool \
+    libdaemon-dev \
+    libplist-dev \
+    libsodium-dev \
+    libgcrypt-dev \
+    libconfig-dev \
+    openssl-dev \
+    popt-dev \
+    soxr-dev \
+    xmltoman \
+    xxd
 
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
@@ -156,7 +167,6 @@ RUN apk add --no-cache \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
 # Removes all libaries that will be installed in the final image
-COPY --from=librespot /librespot-libs/ /tmp-libs/
 COPY --from=snapcast /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
 RUN fdupes -d -N /tmp-libs/ /usr/lib/
@@ -189,7 +199,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/release/librespot /usr/local/bin/
+COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
 COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
