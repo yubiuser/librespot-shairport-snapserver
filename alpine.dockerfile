@@ -61,7 +61,13 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
 WORKDIR /alsa-lib
-RUN ./gitcompile static \
+RUN libtoolize --force --copy --automake \
+    && aclocal \
+    && autoheader \
+    && automake --foreign --copy --add-missing \
+    && autoconf \
+    && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
+    && make \
     && make install
 ### ALSA STATIC END ###
 
@@ -77,7 +83,11 @@ RUN git clone https://github.com/chirlu/soxr.git /soxr
 WORKDIR /soxr
 RUN mkdir build \
     && cd build \
-    && cmake -Wno-dev -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DWITH_OPENMP=OFF -DBUILD_TESTS=OFF .. \
+    && cmake -Wno-dev   -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DWITH_OPENMP=OFF \
+                        -DBUILD_TESTS=OFF \
+                        -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
     && make -j $(( $(nproc) -1 )) \
     && make install
 ### SOXR END ###
@@ -95,7 +105,10 @@ RUN git clone https://github.com/libexpat/libexpat.git /libexpat
 WORKDIR /libexpat/expat
 RUN mkdir build \
     && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DEXPAT_BUILD_TESTS=OFF .. \
+    && cmake    -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_SHARED_LIBS=OFF \
+                -DEXPAT_BUILD_TESTS=OFF \
+                -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
     && make -j $(( $(nproc) -1 )) \
     && make install
 ### LIBEXPAT STATIC END ###
@@ -112,7 +125,10 @@ RUN git clone https://gitlab.xiph.org/xiph/opus.git /opus
 WORKDIR /opus
 RUN mkdir build \
     && cd build \
-    && cmake -DOPUS_BUILD_PROGRAMS=OFF -DOPUS_BUILD_TESTING=OFF -DOPUS_BUILD_SHARED_LIBRARY=OFF .. \
+    && cmake    -DOPUS_BUILD_PROGRAMS=OFF \
+                -DOPUS_BUILD_TESTING=OFF \
+                -DOPUS_BUILD_SHARED_LIBRARY=OFF \
+                -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
     && make \
     && make install
 ### LIBOPUS STATIC END ###
@@ -131,7 +147,11 @@ RUN git clone https://github.com/xiph/ogg /flac/ogg
 WORKDIR /flac
 RUN mkdir build \
     && cd build \
-    && cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DBUILD_DOCS=OFF -DINSTALL_MANPAGES=OFF .. \
+    && cmake    -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTING=OFF \
+                -DBUILD_DOCS=OFF \
+                -DINSTALL_MANPAGES=OFF \
+                -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
     && make \
     && make install
 ### FLAC STATIC END ###
@@ -150,7 +170,7 @@ RUN git clone https://gitlab.xiph.org/xiph/vorbis.git /vorbis
 WORKDIR /vorbis
 RUN mkdir build \
     && cd build \
-    && cmake .. \
+    && cmake -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
     && make \
     && make install
 ### LIBVORBIS STATIC END ###
