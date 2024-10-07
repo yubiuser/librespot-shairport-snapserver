@@ -195,7 +195,7 @@ RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections " \
+    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections" \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 
@@ -267,7 +267,8 @@ RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
-    && ../configure --sysconfdir=/etc \
+    && ../configure CXXFLAGS="-s -static-libgcc -static-libstdc++" \
+                    --sysconfdir=/etc \
                     --with-soxr \
                     --with-avahi \
                     --with-ssl=openssl \
@@ -275,7 +276,7 @@ RUN autoreconf -i ../ \
                     --with-stdout \
                     --with-metadata \
                     --with-apple-alac \
-    && DESTDIR=install make -j $(( $(nproc) -1 )) install
+    && make -j $(( $(nproc) -1 ))
 
 WORKDIR /
 
