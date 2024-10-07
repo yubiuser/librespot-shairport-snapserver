@@ -245,7 +245,7 @@ RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
 RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
     && autoreconf -i \
-    && ./configure \
+    && ./configure CFLAGS="-s" \
     && make -j $(( $(nproc) -1 ))
 WORKDIR /
 ### NQPTP END ###
