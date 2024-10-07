@@ -45,8 +45,8 @@ RUN cargo +nightly build \
 
 ###### LIBRESPOT END ######
 
-###### SNAPCAST BUNDLE START ######
-FROM docker.io/alpine:${alpine_version} AS snapcast
+###### SNAPSERVER BUNDLE START ######
+FROM docker.io/alpine:${alpine_version} AS snapserver
 
 ### ALSA STATIC ###
 RUN apk add --no-cache \
@@ -175,7 +175,7 @@ RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_CXX_FLAGS="-s" \
+    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections " \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 
@@ -185,16 +185,16 @@ RUN mkdir /snapserver-libs \
 ### SNAPSERVER END ###
 
 ### SNAPWEB ###
-# RUN git clone https://github.com/badaix/snapweb.git
-# WORKDIR /snapweb
-# RUN git checkout 66a15126578548ed544ab5b59acdece3825c2699
-# ENV GENERATE_SOURCEMAP="false"
-# RUN npm install -g npm@latest \
-#     && npm ci \
-#     && npm run build
-# WORKDIR /
+RUN git clone https://github.com/badaix/snapweb.git
+WORKDIR /snapweb
+RUN git checkout 66a15126578548ed544ab5b59acdece3825c2699
+ENV GENERATE_SOURCEMAP="false"
+RUN npm install -g npm@latest \
+    && npm ci \
+    && npm run build
+WORKDIR /
 ### SNAPWEB END ###
-###### SNAPCAST BUNDLE END ######
+###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
 FROM docker.io/alpine:${alpine_version} AS shairport
@@ -274,7 +274,7 @@ RUN apk add --no-cache \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
 # Removes all libaries that will be installed in the final image
-COPY --from=snapcast /snapserver-libs/ /tmp-libs/
+COPY --from=snapserver /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
 RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
@@ -307,8 +307,8 @@ COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
-COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
+COPY --from=snapserver /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapserver /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
