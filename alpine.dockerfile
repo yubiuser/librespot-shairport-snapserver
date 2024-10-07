@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG alpine_version=3.20
 ARG S6_OVERLAY_VERSION=3.2.0.0
 
@@ -44,32 +45,158 @@ RUN cargo +nightly build \
 
 ###### LIBRESPOT END ######
 
-###### SNAPCAST BUNDLE START ######
-FROM docker.io/alpine:${alpine_version} AS snapcast
+###### SNAPSERVER BUNDLE START ######
+FROM docker.io/alpine:${alpine_version} AS snapserver
+
+### ALSA STATIC ###
+RUN apk add --no-cache \
+    automake \
+    autoconf \
+    build-base \
+    bash \
+    git \
+    libtool \
+    linux-headers \
+    m4
+
+RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
+WORKDIR /alsa-lib
+RUN libtoolize --force --copy --automake \
+    && aclocal \
+    && autoheader \
+    && automake --foreign --copy --add-missing \
+    && autoconf \
+    && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
+    && make \
+    && make install
+### ALSA STATIC END ###
+
+WORKDIR /
+
+### SOXR ###
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git
+
+RUN git clone https://github.com/chirlu/soxr.git /soxr
+WORKDIR /soxr
+RUN mkdir build \
+    && cd build \
+    && cmake -Wno-dev   -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DWITH_OPENMP=OFF \
+                        -DBUILD_TESTS=OFF \
+                        -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+### SOXR END ###
+
+WORKDIR /
+
+### LIBEXPAT STATIC ###
+RUN apk add --no-cache \
+    build-base \
+    bash \
+    cmake \
+    git
+
+RUN git clone https://github.com/libexpat/libexpat.git /libexpat
+WORKDIR /libexpat/expat
+RUN mkdir build \
+    && cd build \
+    && cmake    -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_SHARED_LIBS=OFF \
+                -DEXPAT_BUILD_TESTS=OFF \
+                -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+### LIBEXPAT STATIC END ###
+
+WORKDIR /
+
+### LIBOPUS STATIC ###
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git
+
+RUN git clone https://gitlab.xiph.org/xiph/opus.git /opus
+WORKDIR /opus
+RUN mkdir build \
+    && cd build \
+    && cmake    -DOPUS_BUILD_PROGRAMS=OFF \
+                -DOPUS_BUILD_TESTING=OFF \
+                -DOPUS_BUILD_SHARED_LIBRARY=OFF \
+                -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make \
+    && make install
+### LIBOPUS STATIC END ###
+
+WORKDIR /
+
+### FLAC STATIC ###
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    pkgconfig
+
+RUN git clone https://github.com/xiph/flac.git /flac
+RUN git clone https://github.com/xiph/ogg /flac/ogg
+WORKDIR /flac
+RUN mkdir build \
+    && cd build \
+    && cmake    -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTING=OFF \
+                -DBUILD_DOCS=OFF \
+                -DINSTALL_MANPAGES=OFF \
+                -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make \
+    && make install
+### FLAC STATIC END ###
+
+WORKDIR /
+
+### LIBVORBIS STATIC ###
+
+# NOTE: libvorbis requires libogg (which is built as part of the flac build)
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git
+
+RUN git clone https://gitlab.xiph.org/xiph/vorbis.git /vorbis
+WORKDIR /vorbis
+RUN mkdir build \
+    && cd build \
+    && cmake -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make \
+    && make install
+### LIBVORBIS STATIC END ###
+
+WORKDIR /
 
 ### SNAPSERVER ###
 RUN apk add --no-cache \
-    alsa-lib-dev \
     avahi-dev \
     bash \
     build-base \
     boost-dev \
-    expat-dev \
-    flac-dev \
     cmake \
     git \
-    libvorbis-dev \
-    npm \
-    soxr-dev \
-    opus-dev
+    npm
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
     && git checkout 208066e5bb3f77482a62301283a8075912a7e22c
 WORKDIR /snapcast
-RUN cmake -S . -B build -DBUILD_CLIENT=OFF \
-    && cmake --build build -j $(( $(nproc) -1 )) --verbose \
-    && strip -s ./bin/snapserver
+RUN cmake -S . -B build \
+    -DBUILD_CLIENT=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections " \
+    && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 
 # Gather all shared libaries necessary to run the executable
@@ -87,7 +214,7 @@ RUN npm install -g npm@latest \
     && npm run build
 WORKDIR /
 ### SNAPWEB END ###
-###### SNAPCAST BUNDLE END ######
+###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
 FROM docker.io/alpine:${alpine_version} AS shairport
@@ -167,7 +294,7 @@ RUN apk add --no-cache \
     fdupes
 # Copy all necessary libaries into one directory to avoid carring over duplicates
 # Removes all libaries that will be installed in the final image
-COPY --from=snapcast /snapserver-libs/ /tmp-libs/
+COPY --from=snapserver /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
 RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
@@ -200,8 +327,8 @@ COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
 COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
-COPY --from=snapcast /snapcast/bin/snapserver /usr/local/bin/
-COPY --from=snapcast /snapweb/dist /usr/share/snapserver/snapweb
+COPY --from=snapserver /snapcast/bin/snapserver /usr/local/bin/
+COPY --from=snapserver /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
