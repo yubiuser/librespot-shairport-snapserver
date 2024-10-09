@@ -195,7 +195,7 @@ RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections " \
+    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections" \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 
@@ -226,7 +226,6 @@ RUN apk add --no-cache \
     automake \
     avahi-dev \
     dbus \
-    ffmpeg-dev \
     git \
     libtool \
     libdaemon-dev \
@@ -236,7 +235,6 @@ RUN apk add --no-cache \
     libconfig-dev \
     openssl-dev \
     popt-dev \
-    soxr-dev \
     xmltoman \
     xxd
 
@@ -245,7 +243,7 @@ RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
 RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
     && autoreconf -i \
-    && ./configure \
+    && ./configure CFLAGS="-s" \
     && make -j $(( $(nproc) -1 ))
 WORKDIR /
 ### NQPTP END ###
@@ -255,11 +253,60 @@ RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
 RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
     && autoreconf -i \
-    && ./configure \
+    && ./configure --disable-shared \
     && make -j $(( $(nproc) -1 )) \
     && make install
-WORKDIR /
+
 ### ALAC END ###
+
+WORKDIR /
+
+### SOXR ###
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git
+
+RUN git clone https://github.com/chirlu/soxr.git /soxr
+WORKDIR /soxr
+RUN mkdir build \
+    && cd build \
+    && cmake -Wno-dev   -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DWITH_OPENMP=OFF \
+                        -DBUILD_TESTS=OFF \
+                        -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+### SOXR END ###
+
+WORKDIR /
+
+### FFmpeg ###
+RUN apk add --no-cache \
+    build-base \
+    git \
+    nasm \
+    pkgconfig
+
+RUN git clone --depth=1 https://github.com/FFmpeg/FFmpeg.git ffmpeg
+WORKDIR /ffmpeg
+RUN ./configure \
+        --enable-small \
+        --disable-programs \
+        --disable-ffplay \
+        --disable-ffprobe \
+        --disable-doc  \
+        --disable-htmlpages \
+        --disable-manpages \
+        --disable-podpages \
+        --disable-txtpages \
+        --extra-cflags="-ffunction-sections -fdata-sections" \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+### FFmpeg END ###
+
+WORKDIR /
 
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
@@ -267,7 +314,8 @@ RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
-    && ../configure --sysconfdir=/etc \
+    && ../configure CXXFLAGS="-s -static-libgcc -static-libstdc++ " \
+                    --sysconfdir=/etc \
                     --with-soxr \
                     --with-avahi \
                     --with-ssl=openssl \
@@ -275,7 +323,7 @@ RUN autoreconf -i ../ \
                     --with-stdout \
                     --with-metadata \
                     --with-apple-alac \
-    && DESTDIR=install make -j $(( $(nproc) -1 )) install
+    && make -j $(( $(nproc) -1 ))
 
 WORKDIR /
 
