@@ -221,13 +221,11 @@ FROM docker.io/alpine:${alpine_version} AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
-    alsa-lib-dev \
     autoconf \
     automake \
     avahi-dev \
     dbus \
     git \
-    libtool \
     libdaemon-dev \
     libplist-dev \
     libsodium-dev \
@@ -235,10 +233,18 @@ RUN apk add --no-cache \
     libconfig-dev \
     openssl-dev \
     popt-dev \
+    util-linux-static \
     xmltoman \
     xxd
 
 ### NQPTP ###
+RUN apk add --no-cache \
+    autoconf \
+    automake \
+    build-base \
+    git \
+    linux-headers
+
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
 RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
@@ -249,11 +255,19 @@ WORKDIR /
 ### NQPTP END ###
 
 ### ALAC ###
-RUN git clone https://github.com/mikebrady/alac
+RUN apk add --no-cache \
+    autoconf \
+    automake \
+    build-base \
+    git \
+    libtool
+
+RUN git clone https://github.com/mikebrady/alac.git
+
 WORKDIR /alac
 RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
     && autoreconf -i \
-    && ./configure --disable-shared \
+    && CXXFLAGS="-ffunction-sections -fdata-sections" ./configure --disable-shared \
     && make -j $(( $(nproc) -1 )) \
     && make install
 
@@ -275,7 +289,7 @@ RUN mkdir build \
                         -DBUILD_SHARED_LIBS=OFF \
                         -DWITH_OPENMP=OFF \
                         -DBUILD_TESTS=OFF \
-                        -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
+                        -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
     && make -j $(( $(nproc) -1 )) \
     && make install
 ### SOXR END ###
@@ -313,8 +327,8 @@ RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
     && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
 WORKDIR /shairport/build
-RUN autoreconf -i ../ \
-    && ../configure CXXFLAGS="-s -static-libgcc -static-libstdc++ " \
+RUN  autoreconf -i ../ \
+    && CXXFLAGS="-s -static-libgcc -static-libstdc++ -ffunction-sections -fdata-sections -Wl,--gc-sections" ../configure \
                     --sysconfdir=/etc \
                     --with-soxr \
                     --with-avahi \
