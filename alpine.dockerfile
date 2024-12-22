@@ -15,7 +15,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 3781a089a69ce9883a299dfd191d90c9a5348819
+   && git checkout d82d94b76cb6472621f797f481c67c98fcebcd70
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -189,7 +189,7 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 208066e5bb3f77482a62301283a8075912a7e22c
+    && git checkout 6190041e863968d76b6d16140bba90be6dff848f
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -207,7 +207,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 66a15126578548ed544ab5b59acdece3825c2699
+RUN git checkout 7f4e59f23cbbb2ebadbc2c67f3f6bb86f5c1a474
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -243,7 +243,7 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
+RUN git checkout 0742bba8ed37159b6a79d7d1321a3b83de6e0bab \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
@@ -253,7 +253,7 @@ WORKDIR /
 ### ALAC ###
 RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
-RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
+RUN git checkout 1832544d27d01335d823d639b176d1cae25ecfd4 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 )) \
@@ -264,7 +264,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 654f59693240420ea96dba1354a06ce44d1293d7
+    && git checkout d166477eb9ca5887ef0a002bd67e855267c0b86a
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
