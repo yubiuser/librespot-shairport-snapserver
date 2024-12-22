@@ -253,7 +253,7 @@ WORKDIR /
 ### ALAC ###
 RUN git clone https://github.com/mikebrady/alac
 WORKDIR /alac
-RUN git checkout 34b327964c2287a49eb79b88b0ace278835ae95f \
+RUN git checkout 1832544d27d01335d823d639b176d1cae25ecfd4 \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 )) \
