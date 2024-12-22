@@ -243,7 +243,7 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout ee6663c99d95f9d25fbe07b0982a3c3b622ba0f5 \
+RUN git checkout 0742bba8ed37159b6a79d7d1321a3b83de6e0bab \
     && autoreconf -i \
     && ./configure \
     && make -j $(( $(nproc) -1 ))
