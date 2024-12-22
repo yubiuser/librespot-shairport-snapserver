@@ -15,7 +15,11 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout d82d94b76cb6472621f797f481c67c98fcebcd70
+   && git checkout d82d94b76cb6472621f797f481c67c98fcebcd70 \
+   && sed -i '1227s/error/warn/' src/main.rs \
+   && sed -i '1228d' src/main.rs \
+   && sed -i '1911s/error/warn/' src/main.rs \
+   && sed -i '1914d' src/main.rs
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -40,7 +44,7 @@ ENV CARGO_INCREMENTAL=0
 RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
     -Z build-std-features="optimize_for_size,panic_immediate_abort" \
-    --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))\
+    --release --no-default-features -j $(( $(nproc) -1 ))\
     --target x86_64-unknown-linux-musl
 
 ###### LIBRESPOT END ######
