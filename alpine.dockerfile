@@ -40,7 +40,7 @@ ENV CARGO_INCREMENTAL=0
 RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
     -Z build-std-features="optimize_for_size,panic_immediate_abort" \
-    --release --no-default-features -j $(( $(nproc) -1 ))\
+    --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))\
     --target x86_64-unknown-linux-musl
 
 ###### LIBRESPOT END ######
