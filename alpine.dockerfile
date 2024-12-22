@@ -207,7 +207,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 66a15126578548ed544ab5b59acdece3825c2699
+RUN git checkout 7f4e59f23cbbb2ebadbc2c67f3f6bb86f5c1a474
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
