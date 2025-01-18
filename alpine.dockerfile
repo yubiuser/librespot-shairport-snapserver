@@ -185,7 +185,8 @@ RUN apk add --no-cache \
     boost-dev \
     cmake \
     git \
-    npm
+    npm \
+    openssl-dev
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
