@@ -92,7 +92,7 @@ docker build -t librespot-shairport-snapserver:local -f ./alpine.dockerfile .
 
 ## Notes
 
-- Based on Alpine 3.21; final image size is ~190 MB (full version); ~115 MB (slim version).  
+- Based on Alpine 3.21; final image size is ~200 MB (full version); ~120 MB (slim version).  
 - All CMake builds use `-j $(( $(nproc) - 1 ))` to leave one CPU free for normal operation.  
 - Uses [s6-overlay](https://github.com/just-containers/s6-overlay) as `init` system:  
   - Required by [NQPTP](https://github.com/mikebrady/nqptp) companion for shairport-sync.  
