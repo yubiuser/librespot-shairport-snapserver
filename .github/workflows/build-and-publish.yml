@@ -93,13 +93,13 @@ jobs:
         with:
           images: ${{ steps.prep.outputs.image }}
           tags: |
-            # Simple tag based on Git ref + variant + platform + sha for uniqueness during build
-            # These tags are temporary and used to collect digests. Final tags are in manifest job.
-            type=raw,value={{branch}}-{{sha}}-${{ matrix.variant }}-${{ matrix.platform }}
-            # Add type=sha for pull requests for easier identification
-            type=sha,event=pr
+            # Generate a unique, always valid tag for each build matrix job,
+            # incorporating the short commit SHA, variant, and platform.
+            # This tag is temporary and used only within the build job.
+            type=raw,value=build-{{sha}}-${{ matrix.variant }}-${{ matrix.platform }}
         env:
-          DOCKER_METADATA_SHORT_SHA_LENGTH: 7 # Shorter SHA is fine for these temp tags
+          # Use short SHA (e.g., 7 characters) for tags
+          DOCKER_METADATA_SHORT_SHA_LENGTH: 7
 
       - name: Log in to GitHub Container Registry (ghcr.io)
         if: env.SHOULD_PUSH == 'true'
