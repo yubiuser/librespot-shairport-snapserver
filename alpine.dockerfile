@@ -232,6 +232,7 @@ RUN apk add --no-cache \
     libtool \
     libdaemon-dev \
     libplist-dev \
+    libplist-util \
     libsodium-dev \
     libgcrypt-dev \
     libconfig-dev \
