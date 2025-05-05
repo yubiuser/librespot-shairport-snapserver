@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 ARG alpine_version=3.21
-ARG S6_OVERLAY_VERSION=3.2.0.2
+ARG S6_OVERLAY_VERSION=3.2.0.3
 
 ###### LIBRESPOT START ######
 FROM docker.io/alpine:${alpine_version} AS librespot
