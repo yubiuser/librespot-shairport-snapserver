@@ -4,6 +4,8 @@ ARG S6_OVERLAY_VERSION=3.2.1.0
 ###### LIBRESPOT START ######
 FROM docker.io/alpine:3.22 AS librespot
 
+ARG CARGO_TARGET=x86_64-unknown-linux-musl
+
 RUN apk add --no-cache \
     git \
     curl \
@@ -40,7 +42,7 @@ RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
     -Z build-std-features="optimize_for_size,panic_immediate_abort" \
     --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))\
-    --target x86_64-unknown-linux-musl
+    --target ${CARGO_TARGET}
 
 ###### LIBRESPOT END ######
 
@@ -289,6 +291,8 @@ RUN mkdir /shairport-libs \
 ###### BASE START ######
 FROM docker.io/alpine:3.22 AS base
 ARG S6_OVERLAY_VERSION
+ARG S6_ARCH=x86_64
+
 RUN apk add --no-cache \
     avahi \
     dbus \
@@ -301,15 +305,16 @@ RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
 # Install s6
 ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
-    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-x86_64.tar.xz /tmp/
+    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz /tmp/
 RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
-    && tar -C / -Jxpf /tmp/s6-overlay-x86_64.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-${S6_ARCH}.tar.xz \
     && rm -rf /tmp/*
 
 ###### BASE END ######
 
 ###### MAIN START ######
 FROM docker.io/alpine:3.22
+ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
@@ -327,7 +332,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/x86_64-unknown-linux-musl/release/librespot /usr/local/bin/
+COPY --from=librespot /librespot/target/${CARGO_TARGET}/release/librespot /usr/local/bin/
 COPY --from=snapserver /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapserver /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
