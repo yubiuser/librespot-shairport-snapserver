@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:1
-ARG alpine_version=3.21
 ARG S6_OVERLAY_VERSION=3.2.1.0
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:${alpine_version} AS librespot
+FROM docker.io/alpine:3.22 AS librespot
 
 RUN apk add --no-cache \
     git \
@@ -46,7 +45,7 @@ RUN cargo +nightly build \
 ###### LIBRESPOT END ######
 
 ###### SNAPSERVER BUNDLE START ######
-FROM docker.io/alpine:${alpine_version} AS snapserver
+FROM docker.io/alpine:3.22 AS snapserver
 
 ### ALSA STATIC ###
 RUN apk add --no-cache \
@@ -218,7 +217,7 @@ WORKDIR /
 ###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM docker.io/alpine:${alpine_version} AS shairport
+FROM docker.io/alpine:3.22 AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -288,7 +287,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:${alpine_version} AS base
+FROM docker.io/alpine:3.22 AS base
 ARG S6_OVERLAY_VERSION
 RUN apk add --no-cache \
     avahi \
@@ -310,7 +309,7 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:${alpine_version}
+FROM docker.io/alpine:3.22
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
