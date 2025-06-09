@@ -14,7 +14,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -23,6 +23,13 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
+            runner: ubuntu-latest
+            cargo_target: x86_64-unknown-linux-musl
+            s6_arch: x86_64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            cargo_target: aarch64-unknown-linux-musl
+            s6_arch: aarch64
     steps:
       - name: Prepare name for digest up/download
         run: |
@@ -72,6 +79,9 @@ jobs:
           cache-to: type=gha
           provenance: false
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CARGO_TARGET=${{ matrix.cargo_target }}
+            S6_ARCH=${{ matrix.s6_arch }}
           outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=${{ github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' || github.event_name == 'release' }}
 
       - name: Export digest
