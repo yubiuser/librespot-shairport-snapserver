@@ -50,26 +50,27 @@ RUN cargo +nightly build \
 FROM docker.io/alpine:3.22 AS snapserver
 
 ### ALSA STATIC ###
-RUN apk add --no-cache \
-    automake \
-    autoconf \
-    build-base \
-    bash \
-    git \
-    libtool \
-    linux-headers \
-    m4
+# Disable ALSA static build as of https://github.com/alsa-project/alsa-lib/pull/459 static build on musl is broken
+# RUN apk add --no-cache \
+#     automake \
+#     autoconf \
+#     build-base \
+#     bash \
+#     git \
+#     libtool \
+#     linux-headers \
+#     m4
 
-RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
-WORKDIR /alsa-lib
-RUN libtoolize --force --copy --automake \
-    && aclocal \
-    && autoheader \
-    && automake --foreign --copy --add-missing \
-    && autoconf \
-    && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
-    && make \
-    && make install
+# RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
+# WORKDIR /alsa-lib
+# RUN libtoolize --force --copy --automake \
+#     && aclocal \
+#     && autoheader \
+#     && automake --foreign --copy --add-missing \
+#     && autoconf \
+#     && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
+#     && make \
+#     && make install
 ### ALSA STATIC END ###
 
 WORKDIR /
@@ -180,6 +181,7 @@ WORKDIR /
 
 ### SNAPSERVER ###
 RUN apk add --no-cache \
+    alsa-lib-dev \
     avahi-dev \
     bash \
     build-base \
