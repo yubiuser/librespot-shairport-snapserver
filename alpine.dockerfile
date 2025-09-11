@@ -123,7 +123,7 @@ RUN apk add --no-cache \
     cmake \
     git
 
-RUN git clone https://gitlab.xiph.org/xiph/opus.git /opus
+RUN git clone https://github.com/xiph/opus.git /opus
 WORKDIR /opus
 RUN mkdir build \
     && cd build \
