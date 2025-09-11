@@ -2,7 +2,7 @@
 ARG S6_OVERLAY_VERSION=3.2.1.0
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:3.22 AS librespot
+FROM docker.io/alpine:3.22.1 AS librespot
 
 ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 2c425ebd0685820a59eac1a4206728acb8a24a51
+   && git checkout 0e5531ff5483dc57fc7557325ceec13b2e486732
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -47,7 +47,7 @@ RUN cargo +nightly build \
 ###### LIBRESPOT END ######
 
 ###### SNAPSERVER BUNDLE START ######
-FROM docker.io/alpine:3.22 AS snapserver
+FROM docker.io/alpine:3.22.1 AS snapserver
 
 ### ALSA STATIC ###
 # Disable ALSA static build as of https://github.com/alsa-project/alsa-lib/pull/459 static build on musl is broken
@@ -193,7 +193,7 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 8b7ac6986f2b37efba8087c05e35248649489d9e
+    && git checkout 37984c16a101945fe2b52da9c98dbe8073b2a57b
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -211,7 +211,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout d2754de749ce69509207a5a403c90174f7c9853b
+RUN git checkout f899725fd5b3f103da6c5c53420e6755b4524104
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -221,7 +221,7 @@ WORKDIR /
 ###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM docker.io/alpine:3.22 AS shairport
+FROM docker.io/alpine:3.22.1 AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -269,7 +269,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout d40e499de56a44371976aaf2d62b0532af5b9cc9
+    && git checkout a56d090fef1ad7e1aa58121f05faa5816cc2fee6
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -291,7 +291,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.22 AS base
+FROM docker.io/alpine:3.22.1 AS base
 ARG S6_OVERLAY_VERSION
 ARG S6_ARCH=x86_64
 
@@ -315,7 +315,7 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.22
+FROM docker.io/alpine:3.22.1
 ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
