@@ -41,7 +41,7 @@ ENV CARGO_INCREMENTAL=0
 RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
     -Z build-std-features="optimize_for_size,panic_immediate_abort" \
-    --release --no-default-features --features with-avahi -j $(( $(nproc) -1 ))\
+    --release --no-default-features --features "with-avahi rustls-tls-webpki-roots" -j $(( $(nproc) -1 ))\
     --target ${CARGO_TARGET}
 
 ###### LIBRESPOT END ######
