@@ -199,7 +199,7 @@ RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections " \
+    -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections" \
     && cmake --build build -j $(( $(nproc) -1 )) --verbose
 WORKDIR /
 
@@ -225,14 +225,11 @@ FROM docker.io/alpine:3.22.1 AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
-    alsa-lib-dev \
     autoconf \
     automake \
     avahi-dev \
     dbus \
-    ffmpeg-dev \
     git \
-    libtool \
     libdaemon-dev \
     libplist-dev \
     libplist-util \
@@ -241,38 +238,103 @@ RUN apk add --no-cache \
     libconfig-dev \
     openssl-dev \
     popt-dev \
-    soxr-dev \
+    util-linux-static \
     xmltoman \
     xxd
 
 ### NQPTP ###
+RUN apk add --no-cache \
+    autoconf \
+    automake \
+    build-base \
+    git \
+    linux-headers
+
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
 RUN git checkout c82f64ffd02d88a4961953b50ec392090032592c \
     && autoreconf -i \
-    && ./configure \
+    && ./configure CFLAGS="-s" \
     && make -j $(( $(nproc) -1 ))
 WORKDIR /
 ### NQPTP END ###
 
 ### ALAC ###
-RUN git clone https://github.com/mikebrady/alac
+RUN apk add --no-cache \
+    autoconf \
+    automake \
+    build-base \
+    git \
+    libtool
+
+RUN git clone https://github.com/mikebrady/alac.git
+
 WORKDIR /alac
 RUN git checkout 1832544d27d01335d823d639b176d1cae25ecfd4 \
     && autoreconf -i \
-    && ./configure \
+    && CXXFLAGS="-ffunction-sections -fdata-sections" ./configure --disable-shared \
     && make -j $(( $(nproc) -1 )) \
     && make install
-WORKDIR /
+
 ### ALAC END ###
+
+WORKDIR /
+
+### SOXR ###
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git
+
+RUN git clone https://github.com/chirlu/soxr.git /soxr
+WORKDIR /soxr
+RUN mkdir build \
+    && cd build \
+    && cmake -Wno-dev   -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DWITH_OPENMP=OFF \
+                        -DBUILD_TESTS=OFF \
+                        -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+### SOXR END ###
+
+WORKDIR /
+
+### FFmpeg ###
+RUN apk add --no-cache \
+    build-base \
+    git \
+    nasm \
+    pkgconfig
+
+RUN git clone --depth=1 https://github.com/FFmpeg/FFmpeg.git ffmpeg
+WORKDIR /ffmpeg
+RUN ./configure \
+        --enable-small \
+        --disable-programs \
+        --disable-ffplay \
+        --disable-ffprobe \
+        --disable-doc  \
+        --disable-htmlpages \
+        --disable-manpages \
+        --disable-podpages \
+        --disable-txtpages \
+        --extra-cflags="-ffunction-sections -fdata-sections" \
+    && make -j $(( $(nproc) -1 )) \
+    && make install
+### FFmpeg END ###
+
+WORKDIR /
 
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
     && git checkout a56d090fef1ad7e1aa58121f05faa5816cc2fee6
 WORKDIR /shairport/build
-RUN autoreconf -i ../ \
-    && ../configure --sysconfdir=/etc \
+RUN  autoreconf -i ../ \
+    && CXXFLAGS="-s -static-libgcc -static-libstdc++ -ffunction-sections -fdata-sections -Wl,--gc-sections" ../configure \
+                    --sysconfdir=/etc \
                     --with-soxr \
                     --with-avahi \
                     --with-ssl=openssl \
@@ -280,7 +342,7 @@ RUN autoreconf -i ../ \
                     --with-stdout \
                     --with-metadata \
                     --with-apple-alac \
-    && DESTDIR=install make -j $(( $(nproc) -1 )) install
+    && make -j $(( $(nproc) -1 ))
 
 WORKDIR /
 
