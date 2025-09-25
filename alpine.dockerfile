@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout eb7c65e77b60da6544e2f4c1bbf3ba06705ef1b7
+   && git checkout df5f957bdd9a29801dd16f08cdc9abc580912da7
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -30,7 +30,7 @@ RUN rustup component add rust-src --toolchain nightly
 
 # Size optimizations from https://github.com/johnthagen/min-sized-rust
 # Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
-ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -C panic=abort"
+ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -Z unstable-options -C panic=immediate-abort"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
@@ -40,7 +40,7 @@ ENV CARGO_INCREMENTAL=0
 # Build the binary, optimize libstd with build-std
 RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
-    -Z build-std-features="optimize_for_size,panic_immediate_abort" \
+    -Z build-std-features="optimize_for_size" \
     --release --no-default-features --features "with-avahi rustls-tls-webpki-roots" -j $(( $(nproc) -1 ))\
     --target ${CARGO_TARGET}
 
