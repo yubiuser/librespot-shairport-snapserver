@@ -2,7 +2,7 @@
 ARG S6_OVERLAY_VERSION=3.2.1.0
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:3.22.2 AS librespot
+FROM docker.io/alpine:3.23.0 AS librespot
 
 ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
@@ -47,7 +47,7 @@ RUN cargo +nightly build \
 ###### LIBRESPOT END ######
 
 ###### SNAPSERVER BUNDLE START ######
-FROM docker.io/alpine:3.22.2 AS snapserver
+FROM docker.io/alpine:3.23.0 AS snapserver
 
 ### ALSA STATIC ###
 # Disable ALSA static build as of https://github.com/alsa-project/alsa-lib/pull/459 static build on musl is broken
@@ -81,7 +81,9 @@ RUN apk add --no-cache \
     cmake \
     git
 
-RUN git clone https://github.com/chirlu/soxr.git /soxr
+# Not using the real sox repo athttps://sourceforge.net/p/soxr/code/merge-requests/ because
+# it is very outdated and does not compile on modern systems (e.g. CMAKE > 3.5)
+RUN git clone https://github.com/dofuuz/soxr /soxr
 WORKDIR /soxr
 RUN mkdir build \
     && cd build \
@@ -221,7 +223,7 @@ WORKDIR /
 ###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM docker.io/alpine:3.22.2 AS shairport
+FROM docker.io/alpine:3.23.0 AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -291,7 +293,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.22.2 AS base
+FROM docker.io/alpine:3.23.0 AS base
 ARG S6_OVERLAY_VERSION
 ARG S6_ARCH=x86_64
 
@@ -315,7 +317,7 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.22.2
+FROM docker.io/alpine:3.23.0
 ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
