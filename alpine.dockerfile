@@ -81,7 +81,9 @@ RUN apk add --no-cache \
     cmake \
     git
 
-RUN git clone https://github.com/chirlu/soxr.git /soxr
+# Not using the real sox repo athttps://sourceforge.net/p/soxr/code/merge-requests/ because
+# it is very outdated and does not compile on modern systems (e.g. CMAKE > 3.5)
+RUN git clone https://github.com/dofuuz/soxr /soxr
 WORKDIR /soxr
 RUN mkdir build \
     && cd build \
