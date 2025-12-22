@@ -215,6 +215,7 @@ WORKDIR /snapweb
 RUN git checkout 9acee022e41da4974ad5f001e61f185dbad76917
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
+    && npm install \
     && npm ci \
     && npm run build
 WORKDIR /
