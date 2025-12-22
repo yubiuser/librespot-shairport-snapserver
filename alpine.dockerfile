@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 84a3302168b8b25d44f1b313ca20155959f553e0
+   && git checkout 414432abeadd5167682be9f5dd0e5777552e688e
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -50,27 +50,26 @@ RUN cargo +nightly build \
 FROM docker.io/alpine:3.23.2 AS snapserver
 
 ### ALSA STATIC ###
-# Disable ALSA static build as of https://github.com/alsa-project/alsa-lib/pull/459 static build on musl is broken
-# RUN apk add --no-cache \
-#     automake \
-#     autoconf \
-#     build-base \
-#     bash \
-#     git \
-#     libtool \
-#     linux-headers \
-#     m4
+RUN apk add --no-cache \
+    automake \
+    autoconf \
+    build-base \
+    bash \
+    git \
+    libtool \
+    linux-headers \
+    m4
 
-# RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
-# WORKDIR /alsa-lib
-# RUN libtoolize --force --copy --automake \
-#     && aclocal \
-#     && autoheader \
-#     && automake --foreign --copy --add-missing \
-#     && autoconf \
-#     && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
-#     && make \
-#     && make install
+RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
+WORKDIR /alsa-lib
+RUN libtoolize --force --copy --automake \
+    && aclocal \
+    && autoheader \
+    && automake --foreign --copy --add-missing \
+    && autoconf \
+    && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
+    && make \
+    && make install
 ### ALSA STATIC END ###
 
 WORKDIR /
@@ -195,7 +194,7 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 0ac550845781b41c4643895b79c8a08fb948009f
+    && git checkout 439dc88637bb7ac227c24d8ad383e7cdf46a76d7
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -213,7 +212,7 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout 83631e428326d2b73a7e849e37f8a8bd4e5ffc00
+RUN git checkout 9acee022e41da4974ad5f001e61f185dbad76917
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
     && npm ci \
@@ -271,7 +270,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout b922049b2fae7edb780e660df0549a2beeb1ccaa
+    && git checkout 5f2c7161fd809a3a71ac19fbfebf75d1542f80e8
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
