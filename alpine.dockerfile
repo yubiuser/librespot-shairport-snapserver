@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG S6_OVERLAY_VERSION=3.2.1.0
+ARG S6_OVERLAY_VERSION=3.2.2.0
 
 ###### LIBRESPOT START ######
 FROM docker.io/alpine:3.23.3 AS librespot
@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 414432abeadd5167682be9f5dd0e5777552e688e
+   && git checkout 7ae3436696f09a9c92f918d9bfb3af8682f30bcc
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -271,7 +271,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 5f2c7161fd809a3a71ac19fbfebf75d1542f80e8
+    && git checkout 531b8a00d8a5bcbcec9400df3615f3c4246e51d3
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
