@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
-ARG S6_OVERLAY_VERSION=3.2.1.0
+ARG S6_OVERLAY_VERSION=3.2.2.0
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:3.22.1 AS librespot
+FROM docker.io/alpine:3.23.3 AS librespot
 
 ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 0e5531ff5483dc57fc7557325ceec13b2e486732
+   && git checkout 7ae3436696f09a9c92f918d9bfb3af8682f30bcc
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -30,7 +30,7 @@ RUN rustup component add rust-src --toolchain nightly
 
 # Size optimizations from https://github.com/johnthagen/min-sized-rust
 # Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
-ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -C panic=abort"
+ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -Z unstable-options -C panic=immediate-abort"
 # Use the new "sparse" protocol which speeds up the cargo index update massively
 # https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
@@ -40,37 +40,36 @@ ENV CARGO_INCREMENTAL=0
 # Build the binary, optimize libstd with build-std
 RUN cargo +nightly build \
     -Z build-std=std,panic_abort \
-    -Z build-std-features="optimize_for_size,panic_immediate_abort" \
+    -Z build-std-features="optimize_for_size" \
     --release --no-default-features --features "with-avahi rustls-tls-webpki-roots" -j $(( $(nproc) -1 ))\
     --target ${CARGO_TARGET}
 
 ###### LIBRESPOT END ######
 
 ###### SNAPSERVER BUNDLE START ######
-FROM docker.io/alpine:3.22.1 AS snapserver
+FROM docker.io/alpine:3.23.3 AS snapserver
 
 ### ALSA STATIC ###
-# Disable ALSA static build as of https://github.com/alsa-project/alsa-lib/pull/459 static build on musl is broken
-# RUN apk add --no-cache \
-#     automake \
-#     autoconf \
-#     build-base \
-#     bash \
-#     git \
-#     libtool \
-#     linux-headers \
-#     m4
+RUN apk add --no-cache \
+    automake \
+    autoconf \
+    build-base \
+    bash \
+    git \
+    libtool \
+    linux-headers \
+    m4
 
-# RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
-# WORKDIR /alsa-lib
-# RUN libtoolize --force --copy --automake \
-#     && aclocal \
-#     && autoheader \
-#     && automake --foreign --copy --add-missing \
-#     && autoconf \
-#     && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
-#     && make \
-#     && make install
+RUN git clone https://github.com/alsa-project/alsa-lib.git /alsa-lib
+WORKDIR /alsa-lib
+RUN libtoolize --force --copy --automake \
+    && aclocal \
+    && autoheader \
+    && automake --foreign --copy --add-missing \
+    && autoconf \
+    && ./configure --enable-shared=no --enable-static=yes CFLAGS="-ffunction-sections -fdata-sections" \
+    && make \
+    && make install
 ### ALSA STATIC END ###
 
 WORKDIR /
@@ -81,7 +80,9 @@ RUN apk add --no-cache \
     cmake \
     git
 
-RUN git clone https://github.com/chirlu/soxr.git /soxr
+# Not using the real sox repo athttps://sourceforge.net/p/soxr/code/merge-requests/ because
+# it is very outdated and does not compile on modern systems (e.g. CMAKE > 3.5)
+RUN git clone https://github.com/dofuuz/soxr /soxr
 WORKDIR /soxr
 RUN mkdir build \
     && cd build \
@@ -193,7 +194,7 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 37984c16a101945fe2b52da9c98dbe8073b2a57b
+    && git checkout 439dc88637bb7ac227c24d8ad383e7cdf46a76d7
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -211,9 +212,10 @@ RUN mkdir /snapserver-libs \
 ### SNAPWEB ###
 RUN git clone https://github.com/badaix/snapweb.git
 WORKDIR /snapweb
-RUN git checkout f899725fd5b3f103da6c5c53420e6755b4524104
+RUN git checkout 9acee022e41da4974ad5f001e61f185dbad76917
 ENV GENERATE_SOURCEMAP="false"
 RUN npm install -g npm@latest \
+    && npm install \
     && npm ci \
     && npm run build
 WORKDIR /
@@ -221,7 +223,7 @@ WORKDIR /
 ###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM docker.io/alpine:3.22.1 AS shairport
+FROM docker.io/alpine:3.23.3 AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -269,7 +271,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a56d090fef1ad7e1aa58121f05faa5816cc2fee6
+    && git checkout 531b8a00d8a5bcbcec9400df3615f3c4246e51d3
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -291,7 +293,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.22.1 AS base
+FROM docker.io/alpine:3.23.3 AS base
 ARG S6_OVERLAY_VERSION
 ARG S6_ARCH=x86_64
 
@@ -315,7 +317,7 @@ RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.22.1
+FROM docker.io/alpine:3.23.3
 ARG CARGO_TARGET=x86_64-unknown-linux-musl
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
