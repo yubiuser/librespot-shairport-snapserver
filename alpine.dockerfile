@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 7ae3436696f09a9c92f918d9bfb3af8682f30bcc
+   && git checkout 33bf3a77ed4b549df67e8347d7d6e55b007b3ec2
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -194,7 +194,7 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 439dc88637bb7ac227c24d8ad383e7cdf46a76d7
+    && git checkout ae5661f3626e27bab8c21f7f30bef3c4aa5ffc68
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -271,7 +271,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 531b8a00d8a5bcbcec9400df3615f3c4246e51d3
+    && git checkout d44391b52e562b7a7c3a8da9c44b4d2ba5ddc574
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
