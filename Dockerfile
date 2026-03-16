@@ -2,9 +2,9 @@
 ARG S6_OVERLAY_VERSION=3.2.2.0
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:3.23.3 AS librespot
+FROM docker.io/alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS librespot
 
-ARG CARGO_TARGET=x86_64-unknown-linux-musl
+ARG TARGETARCH
 
 RUN apk add --no-cache \
     git \
@@ -38,16 +38,24 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 ENV CARGO_INCREMENTAL=0
 
 # Build the binary, optimize libstd with build-std
-RUN cargo +nightly build \
-    -Z build-std=std,panic_abort \
-    -Z build-std-features="optimize_for_size" \
-    --release --no-default-features --features "with-avahi rustls-tls-webpki-roots" -j $(( $(nproc) -1 ))\
-    --target ${CARGO_TARGET}
+# Set CARGO_TARGET based on TARGETARCH
+RUN case "${TARGETARCH}" in \
+      amd64) CARGO_TARGET="x86_64-unknown-linux-musl" ;; \
+      arm64) CARGO_TARGET="aarch64-unknown-linux-musl" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac \
+    && cargo +nightly build \
+        -Z build-std=std,panic_abort \
+        -Z build-std-features="optimize_for_size" \
+        --release --no-default-features --features "with-avahi rustls-tls-webpki-roots" -j $(nproc) \
+        --target ${CARGO_TARGET} \
+    && mkdir -p /output \
+    && cp target/${CARGO_TARGET}/release/librespot /output/librespot
 
 ###### LIBRESPOT END ######
 
 ###### SNAPSERVER BUNDLE START ######
-FROM docker.io/alpine:3.23.3 AS snapserver
+FROM docker.io/alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS snapserver
 
 ### ALSA STATIC ###
 RUN apk add --no-cache \
@@ -91,7 +99,7 @@ RUN mkdir build \
                         -DWITH_OPENMP=OFF \
                         -DBUILD_TESTS=OFF \
                         -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
-    && make -j $(( $(nproc) -1 )) \
+    && make -j $(nproc) \
     && make install
 ### SOXR END ###
 
@@ -112,7 +120,7 @@ RUN mkdir build \
                 -DBUILD_SHARED_LIBS=OFF \
                 -DEXPAT_BUILD_TESTS=OFF \
                 -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
-    && make -j $(( $(nproc) -1 )) \
+    && make -j $(nproc) \
     && make install
 ### LIBEXPAT STATIC END ###
 
@@ -132,7 +140,7 @@ RUN mkdir build \
                 -DOPUS_BUILD_TESTING=OFF \
                 -DOPUS_BUILD_SHARED_LIBRARY=OFF \
                 -DCMAKE_C_FLAGS="-ffunction-sections -fdata-sections" .. \
-    && make \
+    && make -j $(nproc) \
     && make install
 ### LIBOPUS STATIC END ###
 
@@ -155,7 +163,7 @@ RUN mkdir build \
                 -DBUILD_DOCS=OFF \
                 -DINSTALL_MANPAGES=OFF \
                 -DCMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" .. \
-    && make \
+    && make -j $(nproc) \
     && make install
 ### FLAC STATIC END ###
 
@@ -201,7 +209,7 @@ RUN cmake -S . -B build \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_CXX_FLAGS="-s -ffunction-sections -fdata-sections -static-libgcc -static-libstdc++ -Wl,--gc-sections " \
-    && cmake --build build -j $(( $(nproc) -1 )) --verbose
+    && cmake --build build -j $(nproc) --verbose
 WORKDIR /
 
 # Gather all shared libaries necessary to run the executable
@@ -223,7 +231,7 @@ WORKDIR /
 ###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM docker.io/alpine:3.23.3 AS shairport
+FROM docker.io/alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -253,7 +261,7 @@ WORKDIR /nqptp
 RUN git checkout c82f64ffd02d88a4961953b50ec392090032592c \
     && autoreconf -i \
     && ./configure \
-    && make -j $(( $(nproc) -1 ))
+    && make -j $(nproc)
 WORKDIR /
 ### NQPTP END ###
 
@@ -263,7 +271,7 @@ WORKDIR /alac
 RUN git checkout 1832544d27d01335d823d639b176d1cae25ecfd4 \
     && autoreconf -i \
     && ./configure \
-    && make -j $(( $(nproc) -1 )) \
+    && make -j $(nproc) \
     && make install
 WORKDIR /
 ### ALAC END ###
@@ -282,7 +290,7 @@ RUN autoreconf -i ../ \
                     --with-stdout \
                     --with-metadata \
                     --with-apple-alac \
-    && DESTDIR=install make -j $(( $(nproc) -1 )) install
+    && DESTDIR=install make -j $(nproc) install
 
 WORKDIR /
 
@@ -293,9 +301,9 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.23.3 AS base
+FROM docker.io/alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 AS base
 ARG S6_OVERLAY_VERSION
-ARG S6_ARCH=x86_64
+ARG TARGETARCH
 
 RUN apk add --no-cache \
     avahi \
@@ -307,18 +315,22 @@ COPY --from=snapserver /snapserver-libs/ /tmp-libs/
 COPY --from=shairport /shairport-libs/ /tmp-libs/
 RUN fdupes -d -N /tmp-libs/ /usr/lib/
 
-# Install s6
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz \
-    https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz /tmp/
-RUN tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
-    && tar -C / -Jxpf /tmp/s6-overlay-${S6_ARCH}.tar.xz \
+# Install s6 - map Docker's TARGETARCH to s6-overlay architecture names
+RUN case "${TARGETARCH}" in \
+      amd64) S6_ARCH="x86_64" ;; \
+      arm64) S6_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac \
+    && wget -O /tmp/s6-overlay-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz" \
+    && wget -O /tmp/s6-overlay-arch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz" \
+    && tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz \
+    && tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz \
     && rm -rf /tmp/*
 
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.23.3
-ARG CARGO_TARGET=x86_64-unknown-linux-musl
+FROM docker.io/alpine:3.23.3@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
@@ -336,7 +348,7 @@ COPY --from=base init /init
 COPY --from=base /tmp-libs/ /usr/lib/
 
 # Copy all necessary files from the builders
-COPY --from=librespot /librespot/target/${CARGO_TARGET}/release/librespot /usr/local/bin/
+COPY --from=librespot /output/librespot /usr/local/bin/
 COPY --from=snapserver /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapserver /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
