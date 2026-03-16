@@ -12,7 +12,7 @@ Idea adapted from [librespot-snapserver](https://github.com/djmaze/librespot-sna
 
 ## Getting started
 
-Images for `amd64` can be found at [ghcr.io/yubiuser/librespot-shairport-snapserver](ghcr.io/yubiuser/librespot-shairport-snapserver).
+Images for `amd64` and `´arm64` can be found at [ghcr.io/yubiuser/librespot-shairport-snapserver](ghcr.io/yubiuser/librespot-shairport-snapserver).
 
 Use with
 
@@ -39,12 +39,11 @@ services:
 
 To build the image simply run
 
-`docker build -t librespot-shairport-snapserver:local -f ./alpine.dockerfile .`
+`docker build -t librespot-shairport-snapserver:local .`
 
 ## Notes
 
-- Based on Alpine 3:20; final image size is ~116MB
-- All `(c)make` calles use the option `-j $(( $(nproc) -1 ))` to leave one CPU for normal operation
+- Based on Alpine 3.23.3; final image size is ~116M
 - `s6-overlay` is used as `init` system (same as the [shairport-sync docker image](https://github.com/mikebrady/shairport-sync/tree/master/docker)). This is necessary, because *shairport-sync* needs a companion application called [NQPTP](https://github.com/mikebrady/nqptp) which needs to be started from `root` to run as deamon.
   - `s6-rc` with configured dependencies is used to start all services. `snapserver` should start as last
   - `s6-notifyoncheck` is used to check readiness of the started services `dbus` and `avahi`. The actual check is performed by sending `dbus`messages and analyzing the reply.
