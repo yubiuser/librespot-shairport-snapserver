@@ -202,7 +202,7 @@ RUN apk add --no-cache \
 
 RUN git clone https://github.com/badaix/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout ae5661f3626e27bab8c21f7f30bef3c4aa5ffc68
+    && git checkout f12373479243e93a97237592d6a3703539ec41d5
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -258,28 +258,17 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout c82f64ffd02d88a4961953b50ec392090032592c \
+RUN git checkout c17af00b40a454596ca43e1855c9aa13529ebc1f \
     && autoreconf -i \
     && ./configure \
     && make -j $(nproc)
 WORKDIR /
 ### NQPTP END ###
 
-### ALAC ###
-RUN git clone https://github.com/mikebrady/alac
-WORKDIR /alac
-RUN git checkout 1832544d27d01335d823d639b176d1cae25ecfd4 \
-    && autoreconf -i \
-    && ./configure \
-    && make -j $(nproc) \
-    && make install
-WORKDIR /
-### ALAC END ###
-
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout d44391b52e562b7a7c3a8da9c44b4d2ba5ddc574
+    && git checkout c3443a13be183e0467190a6dfc574c210a25cacc
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -289,7 +278,6 @@ RUN autoreconf -i ../ \
                     --with-airplay-2 \
                     --with-stdout \
                     --with-metadata \
-                    --with-apple-alac \
     && DESTDIR=install make -j $(nproc) install
 
 WORKDIR /
