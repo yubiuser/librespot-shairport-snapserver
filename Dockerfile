@@ -2,7 +2,7 @@
 ARG S6_OVERLAY_VERSION=3.2.3.0
 
 ###### LIBRESPOT START ######
-FROM docker.io/alpine:3.24.0@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4 AS librespot
+FROM docker.io/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS librespot
 
 ARG TARGETARCH
 
@@ -55,7 +55,7 @@ RUN case "${TARGETARCH}" in \
 ###### LIBRESPOT END ######
 
 ###### SNAPSERVER BUNDLE START ######
-FROM docker.io/alpine:3.24.0@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4 AS snapserver
+FROM docker.io/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS snapserver
 
 ### ALSA STATIC ###
 RUN apk add --no-cache \
@@ -231,7 +231,7 @@ WORKDIR /
 ###### SNAPSERVER BUNDLE END ######
 
 ###### SHAIRPORT BUNDLE START ######
-FROM docker.io/alpine:3.24.0@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4 AS shairport
+FROM docker.io/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS shairport
 
 RUN apk add --no-cache \
     alpine-sdk \
@@ -289,7 +289,7 @@ RUN mkdir /shairport-libs \
 ###### SHAIRPORT BUNDLE END ######
 
 ###### BASE START ######
-FROM docker.io/alpine:3.24.0@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4 AS base
+FROM docker.io/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS base
 ARG S6_OVERLAY_VERSION
 ARG TARGETARCH
 
@@ -318,7 +318,7 @@ RUN case "${TARGETARCH}" in \
 ###### BASE END ######
 
 ###### MAIN START ######
-FROM docker.io/alpine:3.24.0@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4
+FROM docker.io/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 ENV S6_CMD_WAIT_FOR_SERVICES=1
 ENV S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
