@@ -343,7 +343,7 @@ COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
 # Copy local files
-COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
+COPY ./s6-overlay/ /etc/s6-overlay/
 RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
 
 RUN mkdir -p /var/run/dbus/
