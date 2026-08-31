@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 33bf3a77ed4b549df67e8347d7d6e55b007b3ec2
+   && git checkout 1599145bf2c98660d35b17817b3386767a7e4b42
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -31,9 +31,6 @@ RUN rustup component add rust-src --toolchain nightly
 # Size optimizations from https://github.com/johnthagen/min-sized-rust
 # Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
 ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -Z unstable-options -C panic=immediate-abort"
-# Use the new "sparse" protocol which speeds up the cargo index update massively
-# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 
