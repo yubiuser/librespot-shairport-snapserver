@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 33bf3a77ed4b549df67e8347d7d6e55b007b3ec2
+   && git checkout 1599145bf2c98660d35b17817b3386767a7e4b42
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -31,9 +31,6 @@ RUN rustup component add rust-src --toolchain nightly
 # Size optimizations from https://github.com/johnthagen/min-sized-rust
 # Strip debug symbols, build a static binary, optimize for size, enable thin LTO, abort on panic
 ENV RUSTFLAGS="-C strip=symbols -C target-feature=+crt-static -C opt-level=z -C embed-bitcode=true -C lto=thin -Z unstable-options -C panic=immediate-abort"
-# Use the new "sparse" protocol which speeds up the cargo index update massively
-# https://blog.rust-lang.org/inside-rust/2023/01/30/cargo-sparse-protocol.html
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL="sparse"
 # Disable incremental compilation
 ENV CARGO_INCREMENTAL=0
 
@@ -258,7 +255,7 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout c17af00b40a454596ca43e1855c9aa13529ebc1f \
+RUN git checkout 3141cdc62c74ba5bf4adf16fde64c9e32c019401 \
     && autoreconf -i \
     && ./configure \
     && make -j $(nproc)
@@ -268,7 +265,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout c3443a13be183e0467190a6dfc574c210a25cacc
+    && git checkout f2b95e335d981f2fe1881b36baa2904df480c290
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -343,7 +340,7 @@ COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
 
 # Copy local files
-COPY ./s6-overlay/s6-rc.d /etc/s6-overlay/s6-rc.d
+COPY ./s6-overlay/ /etc/s6-overlay/
 RUN chmod +x /etc/s6-overlay/s6-rc.d/01-startup/script.sh
 
 RUN mkdir -p /var/run/dbus/
