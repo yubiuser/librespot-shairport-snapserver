@@ -255,7 +255,7 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout c17af00b40a454596ca43e1855c9aa13529ebc1f \
+RUN git checkout 3141cdc62c74ba5bf4adf16fde64c9e32c019401 \
     && autoreconf -i \
     && ./configure \
     && make -j $(nproc)
@@ -265,7 +265,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout c3443a13be183e0467190a6dfc574c210a25cacc
+    && git checkout f2b95e335d981f2fe1881b36baa2904df480c290
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
