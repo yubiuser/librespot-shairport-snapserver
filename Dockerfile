@@ -265,7 +265,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout f2b95e335d981f2fe1881b36baa2904df480c290
+    && git checkout 9c51f598e03a6d33ca8cd14cd674aec9d016835a
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
