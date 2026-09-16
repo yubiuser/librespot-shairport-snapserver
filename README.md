@@ -18,7 +18,7 @@ Use with
 
 ```plain
 docker pull ghcr.io/yubiuser/librespot-shairport-snapserver
-docker run -d --rm --net host -v ./snapserver.conf:/etc/snapserver.conf --name snapserver librespot-shairport-snapserver
+docker run -d --rm --net host -v ./snapserver.conf:/etc/snapserver.conf ./shairport-sync.conf:/etc/shairport-sync.conf --name snapserver librespot-shairport-snapserver
 ```
 
 or with `docker-compose.yml`
@@ -32,6 +32,8 @@ services:
     network_mode: host
     volumes:
      - ./snapserver.conf:/etc/snapserver.conf
+     - ./shairport-sync.conf:/etc/shairport-sync.conf
+     - /etc/localtime:/etc/localtime:ro
      #- /tmp/snapfifo:/tmp/snapfifo
 ```
 
