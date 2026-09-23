@@ -255,17 +255,27 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout 3141cdc62c74ba5bf4adf16fde64c9e32c019401 \
+RUN git checkout c4e24d9d91a7df2794a520111ec7cf331cd97e0d \
     && autoreconf -i \
     && ./configure \
     && make -j $(nproc)
 WORKDIR /
 ### NQPTP END ###
 
+    ### shairport-sync-metadata-reader ###
+RUN git clone https://github.com/mikebrady/shairport-sync-metadata-reader.git /shairport-sync-metadata-reader \
+    && cd /shairport-sync-metadata-reader
+WORKDIR /shairport-sync-metadata-reader
+RUN autoreconf -i -f \
+    && ./configure \
+    && make -j $(nproc)
+WORKDIR /
+### shairport-sync-metadata-reader END ###
+
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 9c51f598e03a6d33ca8cd14cd674aec9d016835a
+    && git checkout a5c1d1f7f9f3e5e836c49003ef6894691840a7a8
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
@@ -338,6 +348,7 @@ COPY --from=snapserver /snapcast/bin/snapserver /usr/local/bin/
 COPY --from=snapserver /snapweb/dist /usr/share/snapserver/snapweb
 COPY --from=shairport /shairport/build/shairport-sync /usr/local/bin/
 COPY --from=shairport /nqptp/nqptp /usr/local/bin/
+COPY --from=shairport /shairport-sync-metadata-reader/shairport-sync-metadata-reader /usr/local/bin/
 
 # Copy local files
 COPY ./s6-overlay/ /etc/s6-overlay/
