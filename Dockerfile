@@ -16,7 +16,7 @@ RUN apk add --no-cache \
 # Clone librespot and checkout the latest commit
 RUN git clone https://github.com/librespot-org/librespot \
    && cd librespot \
-   && git checkout 1599145bf2c98660d35b17817b3386767a7e4b42
+   && git checkout 4a005903e078d512456fb008aaa9ba6246881bd9
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -255,7 +255,7 @@ RUN apk add --no-cache \
 ### NQPTP ###
 RUN git clone https://github.com/mikebrady/nqptp
 WORKDIR /nqptp
-RUN git checkout c4e24d9d91a7df2794a520111ec7cf331cd97e0d \
+RUN git checkout 19aace7cff0c7a9db52bfe9b0dd888f3c8d07fcb \
     && autoreconf -i \
     && ./configure \
     && make -j $(nproc)
@@ -275,7 +275,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout a5c1d1f7f9f3e5e836c49003ef6894691840a7a8
+    && git checkout 32a8061c1a924186ce5f9e5c9a835282fdd2df7a
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
