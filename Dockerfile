@@ -174,7 +174,7 @@ RUN apk add --no-cache \
     cmake \
     git
 
-RUN git clone https://gitlab.xiph.org/xiph/vorbis.git /vorbis
+RUN git clone https://github.com/xiph/vorbis.git /vorbis
 WORKDIR /vorbis
 RUN mkdir build \
     && cd build \
