@@ -14,9 +14,9 @@ RUN apk add --no-cache \
     musl-dev
 
 # Clone librespot and checkout the latest commit
-RUN git clone https://github.com/librespot-org/librespot \
+RUN git clone https://github.com/yubiuser/librespot/ \
    && cd librespot \
-   && git checkout 4a005903e078d512456fb008aaa9ba6246881bd9
+   && git checkout 2a52ac50d9cbcf2ef5cb30350378685507df9178
 WORKDIR /librespot
 
 # Setup rust toolchain
