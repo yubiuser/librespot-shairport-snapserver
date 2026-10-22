@@ -14,9 +14,9 @@ RUN apk add --no-cache \
     musl-dev
 
 # Clone librespot and checkout the latest commit
-RUN git clone https://github.com/librespot-org/librespot \
+RUN git clone https://github.com/librespot-org/librespot.git \
    && cd librespot \
-   && git checkout 4a005903e078d512456fb008aaa9ba6246881bd9
+   && git checkout 1f25ceb0281076491684bad03cbe2913f0723dd6
 WORKDIR /librespot
 
 # Setup rust toolchain
@@ -174,7 +174,7 @@ RUN apk add --no-cache \
     cmake \
     git
 
-RUN git clone https://gitlab.xiph.org/xiph/vorbis.git /vorbis
+RUN git clone https://github.com/xiph/vorbis.git /vorbis
 WORKDIR /vorbis
 RUN mkdir build \
     && cd build \
@@ -197,9 +197,9 @@ RUN apk add --no-cache \
     npm \
     openssl-dev
 
-RUN git clone https://github.com/snapcast/snapcast.git /snapcast \
+RUN git clone https://github.com/yubiuser/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout 4fed179e177b251c67326e7b62a25c8d8fb2d1a9
+    && git checkout a4e81b52fb5e9f4448cf302f381f1f7a158893b2
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
@@ -275,7 +275,7 @@ WORKDIR /
 ### SPS ###
 RUN git clone https://github.com/mikebrady/shairport-sync.git /shairport\
     && cd /shairport \
-    && git checkout 32a8061c1a924186ce5f9e5c9a835282fdd2df7a
+    && git checkout 6d290e9b449c98fe5d8862736680b248c5319948
 WORKDIR /shairport/build
 RUN autoreconf -i ../ \
     && ../configure --sysconfdir=/etc \
