@@ -197,9 +197,9 @@ RUN apk add --no-cache \
     npm \
     openssl-dev
 
-RUN git clone https://github.com/yubiuser/snapcast.git /snapcast \
+RUN git clone https://github.com/snapcast/snapcast.git /snapcast \
     && cd snapcast \
-    && git checkout a4e81b52fb5e9f4448cf302f381f1f7a158893b2
+    && git checkout ee0f896cd02c474bf18c6cd9f10b0b7c8b6dd009
 WORKDIR /snapcast
 RUN cmake -S . -B build \
     -DBUILD_CLIENT=OFF \
