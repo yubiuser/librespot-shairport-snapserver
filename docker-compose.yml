@@ -6,4 +6,6 @@ services:
     network_mode: host
     volumes:
      - ./snapserver.conf:/etc/snapserver.conf
-     - /tmp/snapfifo:/tmp/snapfifo
+     - ./shairport-sync.conf:/etc/shairport-sync.conf
+     - /etc/localtime:/etc/localtime:ro
+     #- /tmp/snapfifo:/tmp/snapfifo
